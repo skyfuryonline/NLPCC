@@ -1,35 +1,47 @@
+# 导入unsloth库中的FastLanguageModel模块，用于高效加载和训练大模型
 from unsloth import FastLanguageModel
 
+# 导入PyTorch相关模块
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+# 导入Hugging Face的Trainer和训练参数配置
 from transformers import Trainer, TrainingArguments
+# 导入trl库的SFTTrainer（监督式微调训练器）
 from trl import SFTTrainer, SFTConfig
 
+# 导入自定义的损失函数模块
 from losses import compute_fkl
+# 导入Hugging Face的dataset模块
 from datasets import load_dataset
 
-max_seq_length = 2048 # Choose any! We auto support RoPE Scaling internally!
-dtype = None # None for auto detection. Float16 for Tesla T4, V100, Bfloat16 for Ampere+
-load_in_4bit = True # Use 4bit quantization to reduce memory usage. Can be False.
+# 配置参数
+max_seq_length = 2048  # 最大序列长度，支持RoPE扩展
+dtype = None  # 自动检测数据类型（Tesla T4/V100用float16，Ampere用bfloat16）
+load_in_4bit = True  # 使用4bit量化减少内存占用
 
 
+# 自定义知识蒸馏训练器（继承自SFTTrainer）
 class KDTrainer(SFTTrainer):
 
     def __init__(self, *args, teacher_model=None, if_use_entropy=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.teacher_model = teacher_model
-        self.if_use_entropy = if_use_entropy
+        self.teacher_model = teacher_model  # 教师模型
+        self.if_use_entropy = if_use_entropy  # 是否使用交叉熵的标记
 
     def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        # 学生模型前向传播
         outputs_student = model(**inputs)
 
+        # 教师模型推理（不计算梯度）
         with torch.no_grad():
             teacher_outputs = self.teacher_model(**inputs)
 
+        # 获取学生模型的基础损失和logits
         loss = outputs_student.loss
         logits = outputs_student.logits
 
+        # 获取教师模型的logits
         with torch.no_grad():
             teacher_logits = teacher_outputs.logits
 
@@ -38,68 +50,79 @@ class KDTrainer(SFTTrainer):
         # print(type(logits), type(teacher_logits))
         # if logits is None or teacher_logits is None:
 
+        # 处理logits维度不匹配问题
         kl = 0
         if isinstance(logits, torch.Tensor) and isinstance(teacher_logits, torch.Tensor):
             if logits.shape[-1] != teacher_logits.shape[-1]:
+                # 截断教师模型的logits维度与学生模型对齐
                 # gap = teacher_logits.shape[-1] - logits.shape[-1]
                 # if gap > 0:
                 #     pad_logits = torch.zeros((logits.shape[0], logits.shape[1], gap)).to(logits.device)
                 #     logits = torch.cat([logits, pad_logits], dim=-1)
 
                 teacher_logits = teacher_logits[:, :, :logits.shape[-1]]
-
                 labels = inputs['labels']
+                # 计算前向KL散度损失
                 kl = compute_fkl(logits, teacher_logits, labels, padding_id=-100, temp=2.0)
 
+        # 组合最终损失（KL散度 + 交叉熵）
         if self.if_use_entropy:
-            loss_total = 0.5 * kl + 0.5 * loss
+            loss_total = 0.5 * kl + 0.5 * loss  # 混合损失
         else:
-            loss_total = kl
+            loss_total = kl  # 纯KL散度损失
 
         return (loss_total, outputs_student) if return_outputs else loss_total
 
-# 学生模型
+
+# 初始化学生模型（使用unsloth的优化实现）
 student, _ = FastLanguageModel.from_pretrained(
-    # Can select any from the below:
-    # "unsloth/Qwen2.5-0.5B", "unsloth/Qwen2.5-1.5B", "unsloth/Qwen2.5-3B"
-    # "unsloth/Qwen2.5-14B",  "unsloth/Qwen2.5-32B",  "unsloth/Qwen2.5-72B",
-    # And also all Instruct versions and Math. Coding verisons!
-    model_name = "unsloth/Qwen2.5-1.5B",
-    max_seq_length = max_seq_length,
-    dtype = dtype,
-    load_in_4bit = load_in_4bit,
-    # token = "hf_...", # use one if using gated models like meta-llama/Llama-2-7b-hf
+    model_name="unsloth/Qwen2.5-1.5B",  # 1.5B参数的千问模型
+    max_seq_length=max_seq_length,
+    dtype=dtype,
+    load_in_4bit=load_in_4bit,  # 4bit量化加载
 )
 
+# 应用LoRA适配器（参数高效微调）
 student = FastLanguageModel.get_peft_model(
     student,
-    r = 16, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
-    target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
-                      "gate_proj", "up_proj", "down_proj",],
-    lora_alpha = 16,
-    lora_dropout = 0, # Supports any, but = 0 is optimized
-    bias = "none",    # Supports any, but = "none" is optimized
-    # [NEW] "unsloth" uses 30% less VRAM, fits 2x larger batch sizes!
-    use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
-    random_state = 3407,
+    r=16,  # LoRA秩
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj",  # 目标注意力模块
+                    "gate_proj", "up_proj", "down_proj", ],  # FFN模块
+    lora_alpha=16,  # LoRA alpha参数
+    lora_dropout=0,  # 无dropout
+    bias="none",  # 不训练偏置参数
+    use_gradient_checkpointing="unsloth",  # 使用优化版梯度检查点
+    random_state=3407,  # 随机种子
     use_rslora = False,  # We support rank stabilized LoRA
     loftq_config = None, # And LoftQ
 )
 
-student.print_trainable_parameters()
+student.print_trainable_parameters()  # 打印可训练参数量
 
+# 初始化教师模型（更大的7B模型）
 teacher, tokenizer = FastLanguageModel.from_pretrained(
-    model_name = "unsloth/Qwen2.5-7B",
-    max_seq_length = max_seq_length,
-    dtype = dtype,
-    load_in_4bit = load_in_4bit,
+    model_name="unsloth/Qwen2.5-7B",  # 7B参数的教师模型
+    max_seq_length=max_seq_length,
+    dtype=dtype,
+    load_in_4bit=load_in_4bit,
 )
+teacher.eval()  # 固定教师模型参数
+'''
+Dropout 层：在训练模式（model.train()）下，Dropout 会随机丢弃神经元以增强泛化性；
+但在评估模式下，Dropout 完全失效，所有神经元都会参与计算。
 
-teacher.eval()
+BatchNorm 层：在训练时，BatchNorm 会计算当前 batch 的均值和方差；
+但在评估模式下，它会使用训练阶段累积的全局均值和方差，而不是当前 batch 的统计量。
 
+教师模型的输出需要是确定且稳定的（基于预训练知识），
+如果保留 Dropout 或动态 BatchNorm，会引入随机性，导致知识蒸馏过程不稳定
 
-# 读取数据集
-# process dataset
+双重保险：eval() + torch.no_grad() 确保：
+- 不更新教师模型的参数。
+- 减少内存消耗（不存储中间梯度）。
+'''
+
+# 定义Alpaca格式的prompt模板
 alpaca_prompt = """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
 
 ### Instruction:
@@ -111,7 +134,10 @@ alpaca_prompt = """Below is an instruction that describes a task, paired with an
 ### Response:
 {}"""
 
-EOS_TOKEN = tokenizer.eos_token # Must add EOS_TOKEN
+EOS_TOKEN = tokenizer.eos_token  # 获取结束符
+
+
+# 数据集格式化函数
 def formatting_prompts_func(examples):
     instructions = examples["instruction"]
     inputs       = examples["input"]
@@ -125,41 +151,41 @@ def formatting_prompts_func(examples):
 pass
 
 
+# 加载并预处理Alpaca数据集
 from datasets import load_dataset
 dataset = load_dataset("yahma/alpaca-cleaned", split = "train[:2000]")
 dataset = dataset.map(formatting_prompts_func, batched = True,)
 
-
-# 训练参数
+# 配置训练参数
 args = TrainingArguments(
-    output_dir='./results',
-    num_train_epochs=10,
-    do_train=True,
-    per_device_train_batch_size=2,
-    gradient_accumulation_steps=16,
-    logging_steps=10,
+    output_dir='./results',  # 输出目录
+    num_train_epochs=10,  # 训练轮次
+    do_train=True,  # 启用训练模式
+    per_device_train_batch_size=2,  # 单设备批次大小
+    gradient_accumulation_steps=16,  # 梯度累积步数
+    logging_steps=10,  # 日志记录间隔
 
-    save_strategy='epoch',
-    save_total_limit=10,
-    bf16=True,
-    learning_rate=0.0005,
-    lr_scheduler_type='constant',
-    optim="adamw_torch_fused",
+    save_strategy='epoch',  # 按epoch保存模型
+    save_total_limit=1,  # 最大保存检查点数
+    bf16=True,  # 使用bfloat16精度
+    learning_rate=0.0005,  # 学习率
+    lr_scheduler_type='constant',  # 恒定学习率
+    optim="adamw_torch_fused",  # 使用融合AdamW优化器
 )
 
-
+# 初始化知识蒸馏训练器
 trainer = KDTrainer(
-    model=student,
-    teacher_model=teacher,
+    model=student,  # 学生模型
+    teacher_model=teacher,  # 教师模型
 
-    if_use_entropy=True,
-    processing_class=tokenizer,
-    train_dataset=dataset,
-    dataset_text_field = "text",
-    max_seq_length=max_seq_length,
-    dataset_num_proc=2,
-    packing=False,  # Can make training 5x faster for short sequences.
-    args=args,
+    if_use_entropy=True,  # 启用混合损失
+    processing_class=tokenizer,  # 使用教师模型的tokenizer
+    train_dataset=dataset,  # 训练数据集
+    dataset_text_field="text",  # 文本字段名
+    max_seq_length=max_seq_length,  # 最大序列长度
+    dataset_num_proc=2,  # 数据集处理进程数
+    packing=False,  # 禁用序列打包（短序列时可加速）
+    args=args,  # 训练参数配置
 )
 
 

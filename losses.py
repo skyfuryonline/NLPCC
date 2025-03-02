@@ -8,7 +8,6 @@ def compute_fkl(
         padding_id,
         reduction="sum",
         temp=1.0,
-
 ):
     logits = logits / temp
     teacher_logits = teacher_logits / temp
