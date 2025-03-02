@@ -163,7 +163,7 @@ args = TrainingArguments(
     do_train=True,  # 启用训练模式
     per_device_train_batch_size=2,  # 单设备批次大小
     gradient_accumulation_steps=16,  # 梯度累积步数
-    logging_steps=10,  # 日志记录间隔
+    logging_steps=100,  # 日志记录间隔
 
     save_strategy='epoch',  # 按epoch保存模型
     save_total_limit=1,  # 最大保存检查点数
@@ -191,3 +191,44 @@ trainer = KDTrainer(
 
 # 如果是初次训练resume_from_checkpoint为false，接着checkpoint继续训练，为True
 trainer.train(resume_from_checkpoint=False)
+
+
+
+# 下面是如何使用这个训练好的模型：
+# from unsloth import FastLanguageModel
+# # 加载训练好的学生模型
+# model, tokenizer = FastLanguageModel.from_pretrained(
+#     model_name="./results/checkpoint-xxx",  # 指定检查点路径
+#     max_seq_length=2048,  # 与训练时一致
+#     dtype=None,  # 与训练时一致
+#     load_in_4bit=True,  # 与训练时一致
+# )
+#
+# # 设置推理模式
+# FastLanguageModel.for_inference(model)
+#
+# # 示例输入
+# alpaca_prompt = """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+#
+# ### Instruction:
+# {}
+#
+# ### Input:
+# {}
+#
+# ### Response:
+# {}"""
+#
+# input_text = alpaca_prompt.format(
+#     "Write a short poem",
+#     "About the beauty of nature",
+#     ""
+# )
+#
+# # 转换为 token
+# inputs = tokenizer(input_text, return_tensors="pt").to("cuda")  # 假设使用 GPU
+#
+# # 生成输出
+# outputs = model.generate(**inputs, max_new_tokens=100, temperature=0.7)
+# response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+# print(response)
