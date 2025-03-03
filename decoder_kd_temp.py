@@ -190,6 +190,7 @@ trainer = KDTrainer(
 
 
 # 如果是初次训练resume_from_checkpoint为false，接着checkpoint继续训练，为True
+# 设置为True的时候，需要当前的epoch比上次的大,否则直接就结束
 trainer.train(resume_from_checkpoint=False)
 
 
@@ -232,3 +233,85 @@ trainer.train(resume_from_checkpoint=False)
 # outputs = model.generate(**inputs, max_new_tokens=100, temperature=0.7)
 # response = tokenizer.decode(outputs[0], skip_special_tokens=True)
 # print(response)
+
+
+# -------------------以下为实际使用版本-----------------------
+# # 配置参数
+# max_seq_length = 2048  # 最大序列长度，支持RoPE扩展
+# dtype = None  # 自动检测数据类型（Tesla T4/V100用float16，Ampere用bfloat16）
+# load_in_4bit = True  # 使用4bit量化减少内存占用
+#
+# # 初始化学生模型（使用unsloth的优化实现）
+# student, _ = FastLanguageModel.from_pretrained(
+#     model_name="/root/shared-nvme/results/checkpoint-620",  # 1.5B参数的千问模型
+#     max_seq_length=max_seq_length,
+#     dtype=dtype,
+#     load_in_4bit=load_in_4bit,  # 4bit量化加载
+# )
+#
+# # 初始化teacher模型
+# teacher, tokenizer = FastLanguageModel.from_pretrained(
+#     model_name="/root/shared-nvme/model/Qwen2.5-7B",  # 7B参数的千问模型
+#     max_seq_length=max_seq_length,
+#     dtype=dtype,
+#     load_in_4bit=load_in_4bit,  # 4bit量化加载
+# )
+#
+# FastLanguageModel.for_inference(student)
+#
+# # 示例输入
+# alpaca_prompt = """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+#
+# ### Instruction:
+# {}
+#
+# ### Input:
+# {}
+#
+# ### Response:
+# {}"""
+#
+# input_text = alpaca_prompt.format(
+#     "Give three tips for staying healthy.",
+#     "",
+#     ""
+# )
+#
+# # 转换为 token
+# inputs = tokenizer(input_text, return_tensors="pt").to("cuda")  # 假设使用 GPU
+#
+# # 生成输出
+# outputs = student.generate(**inputs, max_new_tokens=100, temperature=0.75)
+# response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+# print("学生输出： ",response)
+#
+#
+# #-----------------------------------------------------
+# #下列内容作为teacher模型对比
+#
+# FastLanguageModel.for_inference(teacher)
+#
+# # 示例输入
+# alpaca_prompt = """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+#
+# ### Instruction:
+# {}
+#
+# ### Input:
+# {}
+#
+# ### Response:
+# {}"""
+#
+# input_text = alpaca_prompt.format(
+#     "Give three tips for staying healthy.",
+#     "",
+#     ""
+# )
+# # 转换为 token
+# inputs = tokenizer(input_text, return_tensors="pt").to("cuda")  # 假设使用 GPU
+#
+# # 生成输出
+# outputs = teacher.generate(**inputs, max_new_tokens=100, temperature=0.75)
+# response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+# print("教师输出： ",response)
