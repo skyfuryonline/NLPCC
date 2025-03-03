@@ -156,16 +156,24 @@ from datasets import load_dataset
 dataset = load_dataset("yahma/alpaca-cleaned", split = "train[:2000]")
 dataset = dataset.map(formatting_prompts_func, batched = True,)
 
+val_dataset = load_dataset("yahma/alpaca-cleaned", split = "train[2000:3000]")
+val_dataset = val_dataset.map(formatting_prompts_func, batched = True,)
+
 # 配置训练参数
 args = TrainingArguments(
     output_dir='./results',  # 输出目录
-    num_train_epochs=10,  # 训练轮次
-    do_train=True,  # 启用训练模式
-    per_device_train_batch_size=2,  # 单设备批次大小
-    gradient_accumulation_steps=16,  # 梯度累积步数
-    logging_steps=100,  # 日志记录间隔
+    num_train_epochs=20,  # 训练轮次
 
-    save_strategy='epoch',  # 按epoch保存模型
+    do_train=True,  # 启用训练模式
+    do_eval=True,  # 启用评估模式
+
+    per_device_train_batch_size=4,  # 单设备批次大小
+    per_device_eval_batch_size=8,  # 单设备评估批次大小
+    gradient_accumulation_steps=16,  # 梯度累积步数
+
+    logging_steps=500,  # 日志记录间隔
+
+    save_strategy='steps',  # 按step保存模型
     save_total_limit=1,  # 最大保存检查点数
     bf16=True,  # 使用bfloat16精度
     learning_rate=0.0005,  # 学习率
@@ -180,7 +188,10 @@ trainer = KDTrainer(
 
     if_use_entropy=True,  # 启用混合损失
     processing_class=tokenizer,  # 使用教师模型的tokenizer
+
     train_dataset=dataset,  # 训练数据集
+    eval_dataset=val_dataset,  # 验证数据集
+
     dataset_text_field="text",  # 文本字段名
     max_seq_length=max_seq_length,  # 最大序列长度
     dataset_num_proc=2,  # 数据集处理进程数
@@ -188,9 +199,8 @@ trainer = KDTrainer(
     args=args,  # 训练参数配置
 )
 
-
 # 如果是初次训练resume_from_checkpoint为false，接着checkpoint继续训练，为True
-# 设置为True的时候，需要当前的epoch比上次的大,否则直接就结束
+# 需要当前的epoch比上次的大
 trainer.train(resume_from_checkpoint=False)
 
 
