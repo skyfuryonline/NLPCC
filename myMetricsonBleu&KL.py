@@ -7,8 +7,8 @@ import numpy as np
 import re
 
 # 配置参数
-max_seq_length = 2048
-dtype = None
+max_seq_length = 2048 # 模型能够处理的最大序列长度。
+dtype = None # 数据类型，如果未指定，则自动选择合适的类型（例如，使用 bfloat16 如果支持的话）
 load_in_4bit = True
 
 # 已定义的 compute_fkl 函数（复用）
@@ -92,6 +92,11 @@ def formatting_prompts_func(examples):
 
 # 提取 response 的函数
 def extract_response(text):
+    '''
+    :param text:输入的是模型的输出
+    :return: 返回的是输出中的response部分（利用正则）
+    注意最后返回的，如果text字段中没有response，则正则会返回None，据此判断
+    '''
     match = re.search(r"### Response:\n(.*?)(?=\n|$)", text, re.DOTALL)
     return match.group(1).strip() if match else ""
 
@@ -102,6 +107,16 @@ val_dataset = val_dataset.map(formatting_prompts_func, batched=True)
 
 # 生成 response 的函数（支持批量）
 def generate_response_batch(model, tokenizer, instructions, input_texts, max_new_tokens=512):
+    '''
+
+    :param model: 预训练的语言模型qwen
+    :param tokenizer:分词器
+    :param instructions:
+    :param input_texts:
+    :param max_new_tokens:512
+    :return:获取llm对prompt生成的内容，并提取其中的response用于后续评估，返回类型是response list
+    （感觉没有真正的批量，应该使用bath_decode才是）
+    '''
     prompts = [alpaca_prompt.format(instr, inp, "") for instr, inp in zip(instructions, input_texts)]
     inputs = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True, max_length=max_seq_length).to(model.device)
     with torch.no_grad():
@@ -111,20 +126,24 @@ def generate_response_batch(model, tokenizer, instructions, input_texts, max_new
 
 # 评估函数（批量生成版本）
 def evaluate_response_only(teacher, original_student, distilled_student, dataset, tokenizer, batch_size=4):
+    # 初始化存储 KL 散度和 BLEU 分数的列表
     kl_original, kl_distilled = [], []
     bleu_original, bleu_distilled = [], []
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     teacher.to(device)
     original_student.to(device)
     distilled_student.to(device)
-    
+
+    # 为推理设置模型，注意使用unsloth进行推理前必须设置
     FastLanguageModel.for_inference(teacher)
     FastLanguageModel.for_inference(original_student)
     FastLanguageModel.for_inference(distilled_student)
-    
 
+    # 遍历数据集，按批次处理
     for i in range(0, len(dataset), batch_size):
+        # 获取当前批次的数据
         batch = dataset[i:i + batch_size]
         instructions = batch["instruction"]
         inputs = batch["input"]
@@ -147,6 +166,7 @@ def evaluate_response_only(teacher, original_student, distilled_student, dataset
 
             # 批量计算 KL 散度
             for j in range(len(instructions)):
+                # 计算原始学生模型与教师模型之间的 KL 散度
                 kl_orig = compute_fkl(
                     original_logits[j:j+1],  # 取单条的 logits，保持批次维度
                     teacher_logits[j:j+1],
@@ -156,6 +176,7 @@ def evaluate_response_only(teacher, original_student, distilled_student, dataset
                 )
                 kl_original.append(kl_orig.item())
 
+                # 计算蒸馏学生模型与教师模型之间的 KL 散度
                 kl_dist = compute_fkl(
                     distilled_logits[j:j+1],
                     teacher_logits[j:j+1],
@@ -167,12 +188,18 @@ def evaluate_response_only(teacher, original_student, distilled_student, dataset
 
         # 批量计算 BLEU 分数
         for j in range(len(instructions)):
+            # 将真实响应拆分为单词列表
             ref_tokens = true_responses[j].split()
+            # 将原始学生模型的响应拆分为单词列表
             orig_pred_tokens = original_responses[j].split()
+            # 将蒸馏学生模型的响应拆分为单词列表
             dist_pred_tokens = distilled_responses[j].split()
 
+            # 使用平滑函数计算 BLEU 分数
             smoothie = SmoothingFunction().method1
+            # 计算原始学生模型的 BLEU 分数
             bleu_original.append(sentence_bleu([ref_tokens], orig_pred_tokens, smoothing_function=smoothie))
+            # 计算蒸馏学生模型的 BLEU 分数
             bleu_distilled.append(sentence_bleu([ref_tokens], dist_pred_tokens, smoothing_function=smoothie))
 
     # 计算平均值
