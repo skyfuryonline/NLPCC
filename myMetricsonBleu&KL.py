@@ -95,7 +95,7 @@ def extract_response(text):
     '''
     :param text:输入的是模型的输出
     :return: 返回的是输出中的response部分（利用正则）
-    注意最后返回的，如果text字段中没有response，则正则会返回None，据此判断
+    注意最后返回的，如果text字段中没有response，则正则会返回None，据此判断，而验证集中的字段是拼在prompt里面的，保证一定有response部分
     '''
     match = re.search(r"### Response:\n(.*?)(?=\n|$)", text, re.DOTALL)
     return match.group(1).strip() if match else ""
