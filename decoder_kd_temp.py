@@ -51,6 +51,21 @@ class KDTrainer(SFTTrainer):
         # if logits is None or teacher_logits is None:
 
         # 处理logits维度不匹配问题
+        '''
+        下列就是不处理会遇到的问题： 
+        Unsloth 2025.1.8 patched 28 layers with 28 QKV layers, 28 O layers and 28 MLP layers.
+        Traceback (most recent call last):
+          File "/root/shared-nvme/myMetricsonBleu&KL.py", line 165, in <module>
+            results = evaluate_response_only(teacher, original_student, distilled_student, val_dataset, tokenizer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+          File "/root/shared-nvme/myMetricsonBleu&KL.py", line 131, in evaluate_response_only
+            kl_orig = compute_fkl(original_logits, teacher_logits, original_inputs["input_ids"])
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+          File "/root/shared-nvme/myMetricsonBleu&KL.py", line 21, in compute_fkl
+            kl = (teacher_probs * (teacher_log_probs - log_probs))
+                                   ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~
+        RuntimeError: The size of tensor a (152064) must match the size of tensor b (151936) at non-singleton dimension 2
+        '''
         kl = 0
         if isinstance(logits, torch.Tensor) and isinstance(teacher_logits, torch.Tensor):
             if logits.shape[-1] != teacher_logits.shape[-1]:
