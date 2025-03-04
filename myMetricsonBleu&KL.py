@@ -1,0 +1,302 @@
+import torch
+from unsloth import FastLanguageModel
+from transformers import Trainer, TrainingArguments
+from datasets import load_dataset
+from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
+import numpy as np
+import re
+
+# 配置参数
+max_seq_length = 2048
+dtype = None
+load_in_4bit = True
+
+# 已定义的 compute_fkl 函数（复用）
+def compute_fkl(logits, teacher_logits, target, padding_id=-100, reduction="sum", temp=2.0):
+    logits = logits / temp
+    teacher_logits = teacher_logits / temp
+
+    # 调整序列长度，取较短的那个
+    min_seq_length = min(logits.shape[1], teacher_logits.shape[1])
+    logits = logits[:, :min_seq_length, :]
+    teacher_logits = teacher_logits[:, :min_seq_length, :]
+    target = target[:, :min_seq_length]  # 同时调整 target 的长度
+
+    # 处理词汇表维度不匹配，仅截断教师模型的 logits
+    if isinstance(logits, torch.Tensor) and isinstance(teacher_logits, torch.Tensor):
+        if logits.shape[-1] != teacher_logits.shape[-1]:
+            teacher_logits = teacher_logits[:, :, :logits.shape[-1]]
+            
+
+    log_probs = torch.log_softmax(logits, -1, dtype=torch.float32)
+    teacher_probs = torch.softmax(teacher_logits, -1, dtype=torch.float32)
+    teacher_log_probs = torch.log_softmax(teacher_logits, -1, dtype=torch.float32)
+    kl = (teacher_probs * (teacher_log_probs - log_probs))
+    kl = kl.sum(-1)
+    if reduction == "sum":
+        pad_mask = target.eq(padding_id)
+        kl = kl.masked_fill_(pad_mask, 0.0)
+        kl = kl.sum()
+    return kl
+    
+# 加载教师模型
+teacher, tokenizer = FastLanguageModel.from_pretrained(
+    model_name="/root/shared-nvme/model/Qwen2.5-7B",
+    max_seq_length=max_seq_length,
+    dtype=dtype,
+    load_in_4bit=load_in_4bit,
+)
+teacher.eval()
+
+# 加载原始小模型
+original_student, _ = FastLanguageModel.from_pretrained(
+    model_name="/root/shared-nvme/model/Qwen2.5-1.5B-bnb-4bit",
+    max_seq_length=max_seq_length,
+    dtype=dtype,
+    load_in_4bit=load_in_4bit,
+)
+original_student.eval()
+
+# 加载蒸馏后的小模型（替换为实际检查点路径）
+distilled_student, _ = FastLanguageModel.from_pretrained(
+    model_name="./results/checkpoint-620",  # 替换为实际路径
+    max_seq_length=max_seq_length,
+    dtype=dtype,
+    load_in_4bit=load_in_4bit,
+)
+distilled_student.eval()
+
+# 数据集格式化函数（复用）
+alpaca_prompt = """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+
+### Instruction:
+{}
+
+### Input:
+{}
+
+### Response:
+{}"""
+
+EOS_TOKEN = tokenizer.eos_token  # 获取结束符
+
+def formatting_prompts_func(examples):
+    instructions = examples["instruction"]
+    inputs = examples["input"]
+    outputs = examples["output"]
+    texts = []
+    for instruction, input, output in zip(instructions, inputs, outputs):
+        text = alpaca_prompt.format(instruction, input, output) + tokenizer.eos_token
+        texts.append(text)
+    return {"text": texts}
+
+# 提取 response 的函数
+def extract_response(text):
+    match = re.search(r"### Response:\n(.*?)(?=\n|$)", text, re.DOTALL)
+    return match.group(1).strip() if match else ""
+
+# 加载验证集
+val_dataset = load_dataset("yahma/alpaca-cleaned", split="train[2000:2100]")
+val_dataset = val_dataset.map(formatting_prompts_func, batched=True)
+
+
+# 生成 response 的函数（支持批量）
+def generate_response_batch(model, tokenizer, instructions, input_texts, max_new_tokens=512):
+    prompts = [alpaca_prompt.format(instr, inp, "") for instr, inp in zip(instructions, input_texts)]
+    inputs = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True, max_length=max_seq_length).to(model.device)
+    with torch.no_grad():
+        outputs = model.generate(**inputs, max_new_tokens=max_new_tokens, pad_token_id=tokenizer.eos_token_id)
+    generated_texts = [tokenizer.decode(output, skip_special_tokens=True) for output in outputs]
+    return [extract_response(text) for text in generated_texts]
+
+# 评估函数（批量生成版本）
+def evaluate_response_only(teacher, original_student, distilled_student, dataset, tokenizer, batch_size=4):
+    kl_original, kl_distilled = [], []
+    bleu_original, bleu_distilled = [], []
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    teacher.to(device)
+    original_student.to(device)
+    distilled_student.to(device)
+    
+    FastLanguageModel.for_inference(teacher)
+    FastLanguageModel.for_inference(original_student)
+    FastLanguageModel.for_inference(distilled_student)
+    
+
+    for i in range(0, len(dataset), batch_size):
+        batch = dataset[i:i + batch_size]
+        instructions = batch["instruction"]
+        inputs = batch["input"]
+        true_responses = [extract_response(text) for text in batch["text"]]
+
+        # 批量生成 response
+        teacher_responses = generate_response_batch(teacher, tokenizer, instructions, inputs)
+        original_responses = generate_response_batch(original_student, tokenizer, instructions, inputs)
+        distilled_responses = generate_response_batch(distilled_student, tokenizer, instructions, inputs)
+
+        # 批量计算 logits
+        teacher_inputs = tokenizer(teacher_responses, return_tensors="pt", padding=True, truncation=True, max_length=max_seq_length).to(device)
+        original_inputs = tokenizer(original_responses, return_tensors="pt", padding=True, truncation=True, max_length=max_seq_length).to(device)
+        distilled_inputs = tokenizer(distilled_responses, return_tensors="pt", padding=True, truncation=True, max_length=max_seq_length).to(device)
+
+        with torch.no_grad():
+            teacher_logits = teacher(**teacher_inputs).logits  # (batch_size, seq_len_teacher, vocab_size)
+            original_logits = original_student(**original_inputs).logits  # (batch_size, seq_len_original, vocab_size)
+            distilled_logits = distilled_student(**distilled_inputs).logits  # (batch_size, seq_len_distilled, vocab_size)
+
+            # 批量计算 KL 散度
+            for j in range(len(instructions)):
+                kl_orig = compute_fkl(
+                    original_logits[j:j+1],  # 取单条的 logits，保持批次维度
+                    teacher_logits[j:j+1],
+                    original_inputs["input_ids"][j:j+1],
+                    padding_id=-100,
+                    temp=2.0
+                )
+                kl_original.append(kl_orig.item())
+
+                kl_dist = compute_fkl(
+                    distilled_logits[j:j+1],
+                    teacher_logits[j:j+1],
+                    distilled_inputs["input_ids"][j:j+1],
+                    padding_id=-100,
+                    temp=2.0
+                )
+                kl_distilled.append(kl_dist.item())
+
+        # 批量计算 BLEU 分数
+        for j in range(len(instructions)):
+            ref_tokens = true_responses[j].split()
+            orig_pred_tokens = original_responses[j].split()
+            dist_pred_tokens = distilled_responses[j].split()
+
+            smoothie = SmoothingFunction().method1
+            bleu_original.append(sentence_bleu([ref_tokens], orig_pred_tokens, smoothing_function=smoothie))
+            bleu_distilled.append(sentence_bleu([ref_tokens], dist_pred_tokens, smoothing_function=smoothie))
+
+    # 计算平均值
+    avg_kl_original = np.mean(kl_original)
+    avg_kl_distilled = np.mean(kl_distilled)
+    avg_bleu_original = np.mean(bleu_original)
+    avg_bleu_distilled = np.mean(bleu_distilled)
+
+    return {
+        "Original KL": avg_kl_original,
+        "Distilled KL": avg_kl_distilled,
+        "Original BLEU": avg_bleu_original,
+        "Distilled BLEU": avg_bleu_distilled
+    }
+
+# # 生成 response 的函数
+# def generate_response(model, tokenizer, instruction, input_text, max_new_tokens=512):
+#     prompt = alpaca_prompt.format(instruction, input_text, "")
+#     inputs = tokenizer(prompt, return_tensors="pt", padding=True, truncation=True, max_length=max_seq_length).to(model.device)
+    
+#     with torch.no_grad():
+#         outputs = model.generate(**inputs, max_new_tokens=max_new_tokens, pad_token_id=tokenizer.eos_token_id)
+#     generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+#     return extract_response(generated_text)
+
+# # 评估函数（只针对 response）
+# def evaluate_response_only(teacher, original_student, distilled_student, dataset, tokenizer, batch_size=4):
+#     kl_original, kl_distilled = [], []
+#     bleu_original, bleu_distilled = [], []  # 修复：初始化两个空列表
+#     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+#     teacher.to(device)
+#     original_student.to(device)
+#     distilled_student.to(device)
+
+#     # 提前优化模型为推理模式
+    # FastLanguageModel.for_inference(teacher)
+    # FastLanguageModel.for_inference(original_student)
+    # FastLanguageModel.for_inference(distilled_student)
+    
+#     for i in range(0, len(dataset), batch_size):
+#         batch = dataset[i:i + batch_size]
+#         instructions = batch["instruction"]
+#         inputs = batch["input"]
+#         true_responses = [extract_response(text) for text in batch["text"]]
+
+#         for j in range(len(instructions)):
+#             # 真实 response
+#             true_response = true_responses[j]
+
+#             # 教师模型生成 response
+#             teacher_response = generate_response(teacher, tokenizer, instructions[j], inputs[j])
+#             teacher_inputs = tokenizer(teacher_response, return_tensors="pt").to(device)
+#             with torch.no_grad():
+#                 teacher_logits = teacher(**teacher_inputs).logits
+
+#             # 原始小模型生成 response
+#             original_response = generate_response(original_student, tokenizer, instructions[j], inputs[j])
+#             original_inputs = tokenizer(original_response, return_tensors="pt").to(device)
+#             with torch.no_grad():
+#                 original_logits = original_student(**original_inputs).logits
+#                 # 处理维度不匹配
+#                 # kl_orig = 0
+#                 # if isinstance(original_logits, torch.Tensor) and isinstance(teacher_logits, torch.Tensor):
+#                 #     if original_logits.shape[-1] != teacher_logits.shape[-1]:
+#                 #         teacher_logits_orig = teacher_logits[:, :, :original_logits.shape[-1]]
+#                 #         labels = original_inputs["input_ids"]
+#                 #         kl_orig = compute_fkl(original_logits, teacher_logits_orig, labels, padding_id=-100, temp=2.0)
+#                 #     else:
+#                 #         labels = original_inputs["input_ids"]
+#                 #         kl_orig = compute_fkl(original_logits, teacher_logits, labels, padding_id=-100, temp=2.0)
+#                 # kl_original.append(kl_orig.item())
+            
+#                 # 直接调用 compute_fkl，不重复处理维度
+#                 kl_orig = compute_fkl(original_logits, teacher_logits, original_inputs["input_ids"], padding_id=-100, temp=2.0)
+#                 kl_original.append(kl_orig.item())
+
+#             # 蒸馏小模型生成 response
+#             distilled_response = generate_response(distilled_student, tokenizer, instructions[j], inputs[j])
+#             distilled_inputs = tokenizer(distilled_response, return_tensors="pt").to(device)
+#             with torch.no_grad():
+#                 distilled_logits = distilled_student(**distilled_inputs).logits
+#                 # # 处理维度不匹配
+#                 # kl_dist = 0
+#                 # if isinstance(distilled_logits, torch.Tensor) and isinstance(teacher_logits, torch.Tensor):
+#                 #     if distilled_logits.shape[-1] != teacher_logits.shape[-1]:
+#                 #         teacher_logits_dist = teacher_logits[:, :, :distilled_logits.shape[-1]]
+#                 #         labels = distilled_inputs["input_ids"]
+#                 #         kl_dist = compute_fkl(distilled_logits, teacher_logits_dist, labels, padding_id=-100, temp=2.0)
+#                 #     else:
+#                 #         labels = distilled_inputs["input_ids"]
+#                 #         kl_dist = compute_fkl(distilled_logits, teacher_logits, labels, padding_id=-100, temp=2.0)
+#                 # kl_distilled.append(kl_dist.item())
+            
+#                 # 直接调用 compute_fkl，不重复处理维度
+#                 kl_dist = compute_fkl(distilled_logits, teacher_logits, distilled_inputs["input_ids"], padding_id=-100, temp=2.0)
+#                 kl_distilled.append(kl_dist.item())
+
+#             # BLEU 分数计算
+#             ref_tokens = true_response.split()
+#             orig_pred_tokens = original_response.split()
+#             dist_pred_tokens = distilled_response.split()
+
+#             smoothie = SmoothingFunction().method1
+#             bleu_original.append(sentence_bleu([ref_tokens], orig_pred_tokens, smoothing_function=smoothie))
+#             bleu_distilled.append(sentence_bleu([ref_tokens], dist_pred_tokens, smoothing_function=smoothie))
+
+#     # 计算平均值
+#     avg_kl_original = np.mean(kl_original)
+#     avg_kl_distilled = np.mean(kl_distilled)
+#     avg_bleu_original = np.mean(bleu_original)
+#     avg_bleu_distilled = np.mean(bleu_distilled)
+
+#     return {
+#         "Original KL": avg_kl_original,
+#         "Distilled KL": avg_kl_distilled,
+#         "Original BLEU": avg_bleu_original,
+#         "Distilled BLEU": avg_bleu_distilled
+#     }
+
+# 执行评估
+results = evaluate_response_only(teacher, original_student, distilled_student, val_dataset, tokenizer)
+print("Evaluation Results (Response Only):")
+print(f"Original Model KL Divergence: {results['Original KL']:.4f}")
+print(f"Distilled Model KL Divergence: {results['Distilled KL']:.4f}")
+print(f"Original Model BLEU Score: {results['Original BLEU']:.4f}")
+print(f"Distilled Model BLEU Score: {results['Distilled BLEU']:.4f}")
