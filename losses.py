@@ -7,7 +7,7 @@ def compute_fkl(
         target,#目标标签。
         padding_id,#用于填充的ID。
         reduction="sum",#指定如何处理多个样本的KL散度，默认为"sum"
-        temp=1.0,#温度参数，用于调整概率分布的平滑度。
+        temp=2.0,#温度参数，用于调整概率分布的平滑度。
 ):
     # 将logits和teacher_logits除以温度参数temp，用于调整概率分布的平滑度
     logits = logits / temp
