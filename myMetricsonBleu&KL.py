@@ -300,3 +300,85 @@ print(f"Original Model KL Divergence: {results['Original KL']:.4f}")
 print(f"Distilled Model KL Divergence: {results['Distilled KL']:.4f}")
 print(f"Original Model BLEU Score: {results['Original BLEU']:.4f}")
 print(f"Distilled Model BLEU Score: {results['Distilled BLEU']:.4f}")
+
+'''  
+维度：  
+教师模型：unsloth/Qwen2.5-7B，词汇表大小约为 152064（根据之前的错误信息推测）。  
+学生模型：unsloth/Qwen2.5-1.5B 和蒸馏模型，词汇表大小约为 151936。  
+max_seq_length = 2048，max_new_tokens = 512，batch_size = 4。  
+任务：对 val_dataset（1000 条数据）生成 response，计算 KL 散度和 BLEU 分数。  
+
+teacher_inputs：  
+来源：teacher_inputs = tokenizer(teacher_response, return_tensors="pt").to(device)  
+维度：  
+teacher_inputs["input_ids"]：(1, seq_len_teacher)  
+teacher_inputs["attention_mask"]：(1, seq_len_teacher)  
+含义：  
+"input_ids"：一个批次大小为 1 的张量，序列长度 seq_len_teacher 取决于 teacher_response 的 token 数量（通常小于 max_seq_length=2048）。  
+"attention_mask"：与 "input_ids" 形状相同，表示哪些 token 是有效输入（1）或填充  
+
+teacher_logits：  
+来源：teacher_logits = teacher(**teacher_inputs).logits  
+维度：(1, seq_len_teacher, vocab_size_teacher)  
+含义：  
+第 0 维：批次大小，固定为 1（单条生成）。  
+第 1 维：序列长度 seq_len_teacher，与 teacher_inputs["input_ids"] 的长度一致。  
+第 2 维：词汇表大小 vocab_size_teacher，约为 152064（Qwen2.5-7B 的词汇表大小）。  
+
+
+KL 散度计算相关变量  
+以下变量在 compute_fkl 中生成，基于传入的 logits, teacher_logits, 和 target：  
+
+logits：  
+来源：original_logits 或 distilled_logits 传入。  
+维度：  
+original_logits：(1, seq_len_original, vocab_size_student)  
+distilled_logits：(1, seq_len_distilled, vocab_size_student)  
+含义：学生模型的 logits，未经调整。  
+teacher_logits（调整前）：  
+来源：teacher(**teacher_inputs).logits 传入。  
+维度：(1, seq_len_teacher, vocab_size_teacher)  
+含义：教师模型的 logits，未经调整。  
+teacher_logits（调整后）：  
+来源：在 compute_fkl 中若 logits.shape[-1] != teacher_logits.shape[-1]，则截断。  
+维度：  
+若调整：(1, seq_len_teacher, vocab_size_student)，vocab_size_student = 151936。  
+若未调整：(1, seq_len_teacher, vocab_size_teacher)，vocab_size_teacher = 152064。  
+含义：截断后与学生模型的词汇表大小对齐。  
+target：  
+来源：original_inputs["input_ids"] 或 distilled_inputs["input_ids"] 传入。  
+维度：  
+original_inputs["input_ids"]：(1, seq_len_original)  
+distilled_inputs["input_ids"]：(1, seq_len_distilled)  
+含义：学生模型生成的 response 的 token ID，作为 KL 散度的掩码依据。  
+log_probs：  
+来源：log_probs = torch.log_softmax(logits, -1, dtype=torch.float32)  
+维度：  
+original：(1, seq_len_original, vocab_size_student)  
+distilled：(1, seq_len_distilled, vocab_size_student)  
+含义：学生模型 logits 的对数 softmax 概率分布。  
+teacher_probs：  
+来源：teacher_probs = torch.softmax(teacher_logits, -1, dtype=torch.float32)  
+维度：  
+若调整：(1, seq_len_teacher, vocab_size_student)  
+若未调整：(1, seq_len_teacher, vocab_size_teacher)  
+含义：教师模型 logits 的 softmax 概率分布。  
+teacher_log_probs：  
+来源：teacher_log_probs = torch.log_softmax(teacher_logits, -1, dtype=torch.float32)  
+维度：同 teacher_probs。  
+含义：教师模型 logits 的对数 softmax 概率分布。  
+kl（中间结果）：  
+来源：kl = (teacher_probs * (teacher_log_probs - log_probs))  
+维度：  
+original：(1, seq_len_original, vocab_size_student) → 求和后 (1, seq_len_original)distilled：(1, seq_len_distilled, vocab_size_student) → 求和后 (1, seq_len_distilled)含义：逐 token 的 KL 散度，沿词汇表维度求和后得到每个位置的散度值。  
+pad_mask：  
+来源：pad_mask = target.eq(padding_id)  
+维度：  
+original：(1, seq_len_original)  
+distilled：(1, seq_len_distilled)  
+含义：布尔张量，标记 target 中哪些位置是填充 token（-100）。  
+kl（最终结果）：  
+来源：kl = kl.masked_fill_(pad_mask, 0.0).sum()  
+维度：标量（()）  
+含义：对整个序列的 KL 散度总和，填充位置被置为 0。  
+'''
