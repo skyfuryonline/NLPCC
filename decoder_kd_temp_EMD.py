@@ -1,3 +1,10 @@
+# import os
+# os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
+# import wandb
+# os.environ["WANDB_PROJECT"] = "KD"
+# os.environ['WANDB_API_KEY'] = "a464ce6c3b972e3e7090ac20839b9a1daac1b608"
+# wandb.init()
+
 # 导入unsloth库中的FastLanguageModel模块，用于高效加载和训练大模型
 from unsloth import FastLanguageModel
 from EMD_loss import compute_wasserstein_loss
@@ -20,11 +27,13 @@ max_seq_length = 2048  # 最大序列长度，支持RoPE扩展
 dtype = None  # 自动检测数据类型（Tesla T4/V100用float16，Ampere用bfloat16）
 load_in_4bit = True  # 使用4bit量化减少内存占用
 
+origin_student_path =""
+teacher_path = ""
+
 
 # 自定义知识蒸馏训练器（继承自SFTTrainer）
 class KDTrainer(SFTTrainer):
-
-    def __init__(self, *args, teacher_model=None, if_use_entropy=None, **kwargs):
+    def __init__(self, *args, teacher_model=None, if_use_entropy=None,wasserstein_version=1, **kwargs):
         '''
          **kwargs：表示“关键字参数”（keyword arguments）:
         其作用是收集所有未在函数参数列表中显式列出的以 key=value 形式传入的参数，并将它们以字典的形式存储。
@@ -34,6 +43,7 @@ class KDTrainer(SFTTrainer):
         当你初始化 Trainer 时，你会传入 model=student_model，这个模型会赋值给 Trainer 实例的 self.model。
         '''
         super().__init__(*args, **kwargs)
+        self.wasserstein_version = wasserstein_version
         self.teacher_model = teacher_model  # 教师模型
         self.if_use_entropy = if_use_entropy  # 是否使用交叉熵的标记
 
@@ -81,7 +91,7 @@ class KDTrainer(SFTTrainer):
 
 # 初始化学生模型（使用unsloth的优化实现）
 student, _ = FastLanguageModel.from_pretrained(
-    model_name="unsloth/Qwen2.5-1.5B",  # 1.5B参数的千问模型
+    model_name=origin_student_path,  # 1.5B参数的千问模型
     max_seq_length=max_seq_length,
     dtype=dtype,
     load_in_4bit=load_in_4bit,  # 4bit量化加载
@@ -106,7 +116,7 @@ student.print_trainable_parameters()  # 打印可训练参数量
 
 # 初始化教师模型（更大的7B模型）
 teacher, tokenizer = FastLanguageModel.from_pretrained(
-    model_name="unsloth/Qwen2.5-7B",  # 7B参数的教师模型
+    model_name=teacher_path,  # 7B参数的教师模型
     max_seq_length=max_seq_length,
     dtype=dtype,
     load_in_4bit=load_in_4bit,
@@ -178,8 +188,16 @@ args = TrainingArguments(
 
     logging_steps=500,  # 日志记录间隔
 
-    save_strategy='steps',  # 按step保存模型
+    # save_strategy='steps',  # 按step保存模型
+    eval_strategy="epoch",  # 或 "steps"，确保评估被触发
+    report_to="wandb",
+
+    save_strategy="epoch",  # 每个epoch保存一次模型（可选）
+    load_best_model_at_end=True,  # 训练结束时加载最佳模型（需要结合metric_for_best_model）
+    metric_for_best_model="eval_loss",  # 用于选择最佳模型的指标
+    greater_is_better=False,  # eval_loss越小越好
     save_total_limit=1,  # 最大保存检查点数
+
     bf16=True,  # 使用bfloat16精度
     learning_rate=0.0005,  # 学习率
     lr_scheduler_type='constant',  # 恒定学习率
@@ -189,6 +207,9 @@ args = TrainingArguments(
 # 初始化知识蒸馏训练器
 trainer = KDTrainer(
     model=student,  # 学生模型
+    # 手动设置这个参数，注意看trainer中是怎么定义的
+    wasserstein_version=1,
+
     teacher_model=teacher,  # 教师模型
 
     if_use_entropy=True,  # 启用混合损失
@@ -207,7 +228,6 @@ trainer = KDTrainer(
 # 如果是初次训练resume_from_checkpoint为false，接着checkpoint继续训练，为True
 # 需要当前的epoch比上次的大
 trainer.train(resume_from_checkpoint=False)
-
 
 
 # 下面是如何使用这个训练好的模型：
