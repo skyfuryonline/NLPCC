@@ -1,3 +1,5 @@
+# 以下是针对ot.emd2实现的版本，要将数据转移到CPU上；
+
 # import torch
 # import numpy as np
 # import torch.nn.functional as F
