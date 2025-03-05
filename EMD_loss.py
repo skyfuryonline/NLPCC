@@ -46,9 +46,18 @@ def get_new_layer_weight(trans_matrix, distance_matrix, stu_layer_num, tea_layer
 
 def transformer_loss(student_atts, teacher_atts, student_reps, teacher_reps,
                      device, loss_mse, args, global_step, T=1):
+
+    # EMD蒸馏：在这段代码中，关键部分是通过 emd_with_flow 函数计算 EMD，并通过转换矩阵加权层级之间的损失。
+    # 具体来说，emd_att_loss 和 emd_rep_loss 函数都通过计算每一层的MSE损失来衡量学生和教师之间的差异，
+    # 随后通过 EMD 来进行加权，最终计算总损失。
+
     global att_student_weight, rep_student_weight, att_teacher_weight, rep_teacher_weight
     def embedding_rep_loss(student_reps, teacher_reps, student_layer_weight, teacher_layer_weight,
                      stu_layer_num, tea_layer_num, device, loss_mse):
+
+        # 计算的是 表示（representation） 的损失
+        # emd_with_flow：它通过最小化搬运成本来找到从学生和教师之间的表示或注意力的对应关系，并返回转换矩阵。
+        # 这个转换矩阵表征了从学生到教师的层级或注意力之间的“搬运流”。
         student_layer_weight = np.concatenate((student_layer_weight, np.zeros(tea_layer_num)))
         teacher_layer_weight = np.concatenate((np.zeros(stu_layer_num), teacher_layer_weight))
         totol_num = stu_layer_num + tea_layer_num
@@ -89,6 +98,8 @@ def transformer_loss(student_atts, teacher_atts, student_reps, teacher_reps,
 
     def emd_att_loss(student_atts, teacher_atts, student_layer_weight, teacher_layer_weight,
                      stu_layer_num, tea_layer_num, device, loss_mse):
+
+        #计算的是 注意力（attention） 的损失
 
         student_layer_weight = np.concatenate((student_layer_weight, np.zeros(tea_layer_num)))
         teacher_layer_weight = np.concatenate((np.zeros(stu_layer_num), teacher_layer_weight))
