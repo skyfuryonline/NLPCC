@@ -22,6 +22,21 @@ def compute_fkl(logits, teacher_logits, target, padding_id=-100, reduction="sum"
     teacher_logits = teacher_logits[:, :min_seq_length, :]
     target = target[:, :min_seq_length]  # 同时调整 target 的长度
 
+    '''
+    如果不调整序列长度，会遇到如下问题：
+    Traceback (most recent call last):
+      File "/root/shared-nvme/myMetricsonBleu&KL.py", line 297, in <module>
+        results = evaluate_response_only(teacher, original_student, distilled_student, val_dataset, tokenizer)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      File "/root/shared-nvme/myMetricsonBleu&KL.py", line 150, in evaluate_response_only
+        kl_orig = compute_fkl(
+                  ^^^^^^^^^^^^
+      File "/root/shared-nvme/myMetricsonBleu&KL.py", line 34, in compute_fkl
+        kl = (teacher_probs * (teacher_log_probs - log_probs))
+                               ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~
+    RuntimeError: The size of tensor a (140) must match the size of tensor b (512) at non-singleton dimension 1
+    '''
+
     # 处理词汇表维度不匹配，仅截断教师模型的 logits
     if isinstance(logits, torch.Tensor) and isinstance(teacher_logits, torch.Tensor):
         if logits.shape[-1] != teacher_logits.shape[-1]:
