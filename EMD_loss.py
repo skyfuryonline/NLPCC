@@ -185,11 +185,23 @@ def compute_wasserstein_loss(
 
     return loss
 
+
+
+
+
+def example_usage():
+    batch_size, seq_length = 2, 4
+    student_vocab_size, teacher_vocab_size = 10, 15
+    logits = torch.randn(batch_size, seq_length, student_vocab_size)
+    teacher_logits = torch.randn(batch_size, seq_length, teacher_vocab_size)
+    target = torch.tensor([[1, 2, 3, -100], [0, 1, -100, -100]], dtype=torch.long)
+
+    loss_w1 = compute_wasserstein_loss(logits, teacher_logits, target, padding_id=-100, temp=2.0, wasserstein_version=1)
+    loss_w2 = compute_wasserstein_loss(logits, teacher_logits, target, padding_id=-100, temp=2.0, wasserstein_version=2)
+
+    print(f"Wasserstein-1 Loss: {loss_w1.item()}")
+    print(f"Wasserstein-2 Loss: {loss_w2.item()}")
+
 # 示例用法
 if __name__ == "__main__":
-    logits = torch.randn(2, 3, 5, dtype=torch.bfloat16, device="cuda")
-    teacher_logits = torch.randn(2, 3, 7, dtype=torch.bfloat16, device="cuda")
-    target = torch.tensor([[1, 2, -100], [0, 1, 2]], dtype=torch.int64, device="cuda")
-
-    loss = compute_wasserstein_loss(logits, teacher_logits, target, wasserstein_version=1)
-    print(f"Wasserstein Loss: {loss}")
+    example_usage()
