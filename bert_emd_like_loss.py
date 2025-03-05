@@ -1,8 +1,8 @@
 import torch
-import numpy as np
 import torch.nn.functional as F
-import ot
-# pip install pot
+import numpy as np
+import ot  # Python Optimal Transport库
+
 
 def compute_wasserstein_loss(
         logits,  # 学生模型的输出 [batch_size, seq_length, student_vocab_size]
@@ -100,3 +100,59 @@ def compute_wasserstein_loss(
             raise ValueError("reduction must be 'sum' or 'mean'")
 
     return loss
+
+
+# 融入unsloth的compute_loss示例
+class CustomTrainer:
+    def __init__(self, teacher_model, if_use_entropy=True, wasserstein_version=1):
+        self.teacher_model = teacher_model
+        self.if_use_entropy = if_use_entropy
+        self.wasserstein_version = wasserstein_version
+
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        outputs_student = model(**inputs)
+        with torch.no_grad():
+            teacher_outputs = self.teacher_model(**inputs)
+
+        loss = outputs_student.loss
+        logits = outputs_student.logits
+        teacher_logits = teacher_outputs.logits
+
+        wasserstein_loss = 0
+        if isinstance(logits, torch.Tensor) and isinstance(teacher_logits, torch.Tensor):
+            labels = inputs['labels']
+            wasserstein_loss = compute_wasserstein_loss(
+                logits=logits,
+                teacher_logits=teacher_logits,
+                target=labels,
+                padding_id=-100,
+                reduction="sum",
+                temp=2.0,
+                wasserstein_version=self.wasserstein_version
+            )
+
+        if self.if_use_entropy:
+            loss_total = 0.5 * wasserstein_loss + 0.5 * loss
+        else:
+            loss_total = wasserstein_loss
+
+        return (loss_total, outputs_student) if return_outputs else loss_total
+
+
+# 使用示例
+def example_usage():
+    batch_size, seq_length = 2, 4
+    student_vocab_size, teacher_vocab_size = 10, 15
+    logits = torch.randn(batch_size, seq_length, student_vocab_size)
+    teacher_logits = torch.randn(batch_size, seq_length, teacher_vocab_size)
+    target = torch.tensor([[1, 2, 3, -100], [0, 1, -100, -100]], dtype=torch.long)
+
+    loss_w1 = compute_wasserstein_loss(logits, teacher_logits, target, padding_id=-100, temp=2.0, wasserstein_version=1)
+    loss_w2 = compute_wasserstein_loss(logits, teacher_logits, target, padding_id=-100, temp=2.0, wasserstein_version=2)
+
+    print(f"Wasserstein-1 Loss: {loss_w1.item()}")
+    print(f"Wasserstein-2 Loss: {loss_w2.item()}")
+
+
+if __name__ == "__main__":
+    example_usage()
