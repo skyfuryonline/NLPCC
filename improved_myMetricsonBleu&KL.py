@@ -10,6 +10,10 @@ from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 import numpy as np
 import re
 
+origin_student_path = "/root/shared-nvme/model/Qwen2.5-1.5B-bnb-4bit"
+distill_student_path = "./results/checkpoint-620"
+teacher_path = "/root/shared-nvme/model/Qwen2.5-7B"
+
 # 配置参数（保持不变）
 max_seq_length = 2048
 dtype = None
@@ -44,7 +48,7 @@ def compute_fkl(logits, teacher_logits, target, padding_id=-100, reduction="sum"
 
 # 加载模型（保持不变）
 teacher, tokenizer = FastLanguageModel.from_pretrained(
-    model_name="/root/shared-nvme/model/Qwen2.5-7B",
+    model_name=teacher_path,
     max_seq_length=max_seq_length,
     dtype=dtype,
     load_in_4bit=load_in_4bit,
@@ -52,7 +56,7 @@ teacher, tokenizer = FastLanguageModel.from_pretrained(
 teacher.eval()
 
 original_student, _ = FastLanguageModel.from_pretrained(
-    model_name="/root/shared-nvme/model/Qwen2.5-1.5B-bnb-4bit",
+    model_name=origin_student_path,
     max_seq_length=max_seq_length,
     dtype=dtype,
     load_in_4bit=load_in_4bit,
@@ -60,7 +64,7 @@ original_student, _ = FastLanguageModel.from_pretrained(
 original_student.eval()
 
 distilled_student, _ = FastLanguageModel.from_pretrained(
-    model_name="./results/checkpoint-620",
+    model_name=distill_student_path,
     max_seq_length=max_seq_length,
     dtype=dtype,
     load_in_4bit=load_in_4bit,
@@ -197,7 +201,7 @@ def evaluate_response_only(teacher, original_student, distilled_student, dataset
 
 # 执行评估
 results = evaluate_response_only(teacher, original_student, distilled_student, val_dataset, tokenizer)
-print("评估结果（仅针对响应）：")
+print("评估结果（仅针对响应response部分）：")
 print(f"原始模型 KL 散度: {results['Original KL']:.4f}")
 print(f"蒸馏模型 KL 散度: {results['Distilled KL']:.4f}")
 print(f"原始模型 BLEU 分数: {results['Original BLEU']:.4f}")
