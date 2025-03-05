@@ -22,14 +22,27 @@ def compute_fkl(
     # 计算前向KL散度：教师模型的概率分布与学生模型的概率分布之间的差异
     kl = (teacher_probs * (teacher_log_probs - log_probs))
     # 对每个样本的KL散度在最后一个维度上求和
+    '''
+    假设 kl 是形状为 (batch_size, seq_len, vocab_size) 的张量，每个 token 在 vocab_size 维度上都有一个KL值。
+    sum(-1) 之后，kl 变成形状 (batch_size, seq_len)，即对每个token 在 vocab_size 维度上的 KL 值求和，得到该token的KL散度
+    '''
     kl = kl.sum(-1)
     # 如果reduction为"sum"，则进行以下操作
     if reduction == "sum":
         # 创建一个掩码，标记目标中等于padding_id的位置
+        '''
+        target = tensor([[1, 2, 3, 0, 0], [4, 5, 6, 7, 0]])
+        padding_id = 0
+        pad_mask = target.eq(padding_id)
+        # 结果：
+        tensor([[False, False, False, True, True],
+                [False, False, False, False, True]])
+        '''
         pad_mask = target.eq(padding_id)
         # 将掩码位置的KL散度值设为0.0
         kl = kl.masked_fill_(pad_mask, 0.0)
         # 对所有样本的KL散度求和
+        # 对 batch 维度和序列维度上的 KL 散度求和，最终返回一个标量，表示整个 batch 的总 KL 散度
         kl = kl.sum()
     # 返回计算得到的KL散度
     return kl
