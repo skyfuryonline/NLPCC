@@ -5,6 +5,7 @@ import logging
 
 logger = logging.getLogger()
 
+
 def get_new_layer_weight(trans_matrix, distance_matrix, stu_layer_num, tea_layer_num, T, type_update='att'):
     if type_update == 'att':
         global att_student_weight, att_teacher_weight
@@ -186,3 +187,34 @@ def pkd_loss(student_atts, teacher_atts, student_reps, teacher_reps, device='cud
     rep_loss = sum(rep_tmp_loss)
 
     return att_loss, rep_loss
+
+
+
+
+
+
+
+import torch
+import torch.nn.functional as F
+def compute_wasserstein(
+        logits,  # 学生模型的输出
+        teacher_logits,  # 教师模型的输出
+        target,  # 目标标签
+        padding_id,  # 用于填充的ID
+        reduction="sum",  # 指定如何处理多个样本的距离，默认为"sum"
+        temp=2.0  # 温度参数
+):
+    # 计算软概率分布
+    student_probs = F.softmax(logits / temp, dim=-1)
+    teacher_probs = F.softmax(teacher_logits / temp, dim=-1)
+
+    # 计算 Wasserstein 距离（这里使用 L1 范数近似）
+    wasserstein_distance = torch.abs(torch.cumsum(student_probs, dim=-1) - torch.cumsum(teacher_probs, dim=-1)).sum(-1)
+
+    # 处理填充部分
+    if reduction == "sum":
+        pad_mask = target.eq(padding_id)  # 生成填充掩码
+        wasserstein_distance = wasserstein_distance.masked_fill_(pad_mask, 0.0)  # 填充部分置零
+        wasserstein_distance = wasserstein_distance.sum()  # 计算总损失
+
+    return wasserstein_distance
