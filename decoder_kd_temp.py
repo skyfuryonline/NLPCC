@@ -25,11 +25,25 @@ load_in_4bit = True  # 使用4bit量化减少内存占用
 class KDTrainer(SFTTrainer):
 
     def __init__(self, *args, teacher_model=None, if_use_entropy=None, **kwargs):
+        '''
+         **kwargs：表示“关键字参数”（keyword arguments）:
+        其作用是收集所有未在函数参数列表中显式列出的以 key=value 形式传入的参数，并将它们以字典的形式存储。
+
+        *args：用于收集额外的位置参数（以元组形式传入）
+
+        当你初始化 Trainer 时，你会传入 model=student_model，这个模型会赋值给 Trainer 实例的 self.model。
+        '''
         super().__init__(*args, **kwargs)
         self.teacher_model = teacher_model  # 教师模型
         self.if_use_entropy = if_use_entropy  # 是否使用交叉熵的标记
 
     def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        #在训练或评估时，Trainer 内部会调用 self.model 来进行前向传播（例如 compute_loss 中传入的 model 参数就是 self.model）
+        '''
+        Trainer 的训练循环中，会调用类似 training_step 的方法，
+        而这个方法内部会把 self.model（也就是传入的 student_model）和当前 batch 的输入数据（inputs）传入 compute_loss。
+        因此，compute_loss 接收到的 model 参数通常就是 self.model
+        '''
         # 学生模型前向传播
         outputs_student = model(**inputs)
 
