@@ -196,6 +196,8 @@ args = TrainingArguments(
     do_train=True,  # 启用训练模式
     do_eval=True,  # 启用评估模式
 
+
+    # 为什么小train batch会导致更好的效果？
     per_device_train_batch_size=4,  # 单设备批次大小
     per_device_eval_batch_size=8,  # 单设备评估批次大小
     gradient_accumulation_steps=16,  # 梯度累积步数
