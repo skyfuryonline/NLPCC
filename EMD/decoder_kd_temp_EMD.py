@@ -7,7 +7,7 @@
 
 # 导入unsloth库中的FastLanguageModel模块，用于高效加载和训练大模型
 from unsloth import FastLanguageModel
-from EMD_loss import compute_wasserstein_loss
+from EMD_with_pytorch import compute_wasserstein_loss
 # 导入PyTorch相关模块
 import torch
 import torch.nn as nn

@@ -187,10 +187,6 @@ def compute_wasserstein_loss(
 
     return loss
 
-
-
-
-
 def example_usage():
     batch_size, seq_length = 2, 4
     student_vocab_size, teacher_vocab_size = 10, 15
