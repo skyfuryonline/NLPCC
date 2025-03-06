@@ -144,20 +144,20 @@ val_dataset = val_dataset.map(formatting_prompts_func, batched = True,)
 # 配置训练参数
 args = TrainingArguments(
     output_dir='./results',  # 输出目录
-    num_train_epochs=10,  # 训练轮次
+    num_train_epochs=20,  # 训练轮次
 
     do_train=True,  # 启用训练模式
-    do_eval=True,  # 启用评估模式
+    # do_eval=True,  # 启用评估模式
 
-    per_device_train_batch_size=16,  # 单设备批次大小
+    per_device_train_batch_size=4,  # 单设备批次大小
     per_device_eval_batch_size=16,  # 单设备评估批次大小
-    # gradient_accumulation_steps=16,  # 梯度累积步数
+    gradient_accumulation_steps=16,  # 梯度累积步数
 
     logging_steps=500,  # 日志记录间隔
 
     save_strategy='steps',  # 按step保存模型
     eval_strategy="epoch",  # 或 "steps"，确保评估被触发
-    report_to="wandb",
+    # report_to="wandb",
 
 
     bf16=True,  # 使用bfloat16精度
