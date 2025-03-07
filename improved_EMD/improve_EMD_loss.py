@@ -150,6 +150,7 @@
 
 
 #版本 2（基于 CDF，带 vocab_indices 加权）
+# (基于 CDF，带 vocab_indices 加权）
 import torch
 import torch.nn.functional as F
 
@@ -162,15 +163,20 @@ def compute_wasserstein_loss(
     temp=2.0,
     wasserstein_version=1,
 ):
+    # 确定计算数据类型，若 logits 为 bfloat16，则保持一致，否则使用 float32
     dtype = torch.bfloat16 if logits.dtype == torch.bfloat16 else torch.float32
     temp = torch.tensor(temp, dtype=dtype, device=logits.device)
+    # 生成 mask，用于标识有效的目标 token（即 target 不是 padding_id）
     mask = (target != padding_id).to(dtype=dtype)
 
+    # 获取学生和教师模型的词汇表大小
     student_vocab_size = logits.shape[-1]
     teacher_vocab_size = teacher_logits.shape[-1]
     max_vocab_size = max(student_vocab_size, teacher_vocab_size)
 
+    # 如果学生模型的词汇表比教师模型小，则进行填充
     if student_vocab_size < teacher_vocab_size:
+        # 用 -inf 填充确保 softmax 计算后概率为 0
         padding = torch.full(
             (logits.shape[0], logits.shape[1], teacher_vocab_size - student_vocab_size),
             float('-inf'), device=logits.device, dtype=dtype
@@ -179,8 +185,10 @@ def compute_wasserstein_loss(
     else:
         logits_padded = logits.to(dtype=dtype)
 
+    # 计算 softmax 归一化后的概率分布
     student_probs = F.softmax(logits_padded / temp, dim=-1)
     teacher_probs = F.softmax(teacher_logits.to(dtype=dtype) / temp, dim=-1)
+    # 若教师模型的词汇表比最大词汇表小，则填充 0
     if teacher_vocab_size < max_vocab_size:
         padding = torch.zeros(
             (teacher_logits.shape[0], teacher_logits.shape[1], max_vocab_size - teacher_vocab_size),
@@ -188,16 +196,22 @@ def compute_wasserstein_loss(
         )
         teacher_probs = torch.cat([teacher_probs, padding], dim=-1)
 
+    # 生成词汇索引向量（用于 Wasserstein 计算）
     vocab_indices = torch.arange(max_vocab_size, dtype=dtype, device=logits.device)
+    # 计算累积分布函数（CDF）
     student_cdf = torch.cumsum(student_probs, dim=-1)
     teacher_cdf = torch.cumsum(teacher_probs, dim=-1)
     
     if wasserstein_version == 1:
+        # 计算 Wasserstein-1 距离：|CDF_student - CDF_teacher| * vocab_indices
         w_loss = torch.abs(student_cdf - teacher_cdf) * vocab_indices
-        w_loss = w_loss.sum(dim=-1)
+        w_loss = w_loss.sum(dim=-1)# 在词汇表维度上求和
     elif wasserstein_version == 2:
+        # 计算 Wasserstein-2 距离：(CDF_student - CDF_teacher)^2 * vocab_indices
         w_loss = (student_cdf - teacher_cdf) ** 2 * vocab_indices
-        w_loss = w_loss.sum(dim=-1).sqrt()
+        w_loss = w_loss.sum(dim=-1).sqrt() # 在词汇表维度上求和后开方
 
+    # 仅计算有效 token 的损失（屏蔽 padding 位置）
     w_loss = w_loss * mask
+    # 根据 reduction 方式计算最终损失
     return w_loss.sum() if reduction == "sum" else w_loss.sum() / mask.sum()
