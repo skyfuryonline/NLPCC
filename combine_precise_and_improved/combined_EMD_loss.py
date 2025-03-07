@@ -6,8 +6,9 @@ from pyemd import emd_with_flow
 
 def combined_wasserstein_loss(
     student_logits, teacher_logits, target, student_reps, teacher_reps,
+    student_layer_weight, teacher_layer_weight, device, loss_mse,
     padding_id=-100, reduction="sum", temp=2.0, wasserstein_version=1,
-    student_layer_weight, teacher_layer_weight, device, loss_mse, alpha=0.5
+    alpha=0.5
 ):
     # 输出分布损失（代码B）
     dtype = torch.bfloat16 if student_logits.dtype == torch.bfloat16 else torch.float32
