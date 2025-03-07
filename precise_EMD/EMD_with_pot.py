@@ -3,6 +3,7 @@ import numpy as np
 import torch.nn.functional as F
 import ot
 
+# 由于词表大小的问题，计算代价极大，且无法使用GPU加速计算
 def compute_wasserstein_loss(
         logits,  # 学生模型的输出 [batch_size, seq_length, student_vocab_size]
         teacher_logits,  # 教师模型的输出 [batch_size, seq_length, teacher_vocab_size]
