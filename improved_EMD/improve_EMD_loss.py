@@ -151,6 +151,8 @@
 
 #版本 2（基于 CDF，带 vocab_indices 加权）
 # (基于 CDF，带 vocab_indices 加权）
+# 基于累积分布函数（CDF，torch.cumsum），计算CDF差异并用vocab_indices加权。
+# 通过CDF更接近Wasserstein距离的定义（衡量分布间的“搬运成本”）。
 import torch
 import torch.nn.functional as F
 

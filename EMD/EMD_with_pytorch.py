@@ -106,6 +106,8 @@
 
 # 为了充分发挥 bf16 和 GPU 的优势，我们可以用 PyTorch 原生操作近似计算 Wasserstein 距离，避免依赖 ot.emd2
 # 使用pytorch加速
+# 直接用概率分布的差异（student_probs - teacher_probs），计算逐点L1或L2距离，未使用CDF
+# 简单的概率分布L1/L2损失，与Wasserstein距离的几何特性偏离
 import torch
 import torch.nn.functional as F
 
@@ -162,9 +164,9 @@ def compute_wasserstein_loss(
         )
         teacher_probs = torch.cat([teacher_probs, padding], dim=-1)
 
-    # 构造位置索引并计算距离矩阵
-    vocab_indices = torch.arange(max_vocab_size, dtype=dtype, device=logits.device)
-    vocab_indices = vocab_indices.view(1, 1, -1)  # [1, 1, max_vocab_size]
+    # # 构造位置索引并计算距离矩阵
+    # vocab_indices = torch.arange(max_vocab_size, dtype=dtype, device=logits.device)
+    # vocab_indices = vocab_indices.view(1, 1, -1)  # [1, 1, max_vocab_size]
     if wasserstein_version == 1:
         w_loss = torch.abs(student_probs - teacher_probs)  # L1 距离近似
         w_loss = w_loss.sum(dim=-1)  # [batch_size, seq_length]
