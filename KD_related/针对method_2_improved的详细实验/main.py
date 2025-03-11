@@ -102,7 +102,13 @@ class KDTrainer(SFTTrainer):
                 student_embeddings=student_embeddings,
                 teacher_embeddings=teacher_embeddings,
                 target=labels, padding_id=-100, 
-                reduction="sum", temp=2.0, topk=100  # 添加 topk 参数
+                reduction="sum",
+                # temp=2.0,
+
+                #不妨试试
+                #[https://wandb.ai/skyfurynowonline-yunnan-university/KD/runs/5hnw6ol3/overview]
+                temp=1.0,
+                topk=100  # 添加 topk 参数
             )
 
 
