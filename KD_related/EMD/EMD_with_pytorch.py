@@ -164,9 +164,6 @@ def compute_wasserstein_loss(
         )
         teacher_probs = torch.cat([teacher_probs, padding], dim=-1)
 
-    # # 构造位置索引并计算距离矩阵
-    # vocab_indices = torch.arange(max_vocab_size, dtype=dtype, device=logits.device)
-    # vocab_indices = vocab_indices.view(1, 1, -1)  # [1, 1, max_vocab_size]
     if wasserstein_version == 1:
         w_loss = torch.abs(student_probs - teacher_probs)  # L1 距离近似
         w_loss = w_loss.sum(dim=-1)  # [batch_size, seq_length]
