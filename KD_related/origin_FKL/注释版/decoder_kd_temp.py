@@ -164,8 +164,6 @@ alpaca_prompt = """Below is an instruction that describes a task, paired with an
 {}"""
 
 EOS_TOKEN = tokenizer.eos_token  # 获取结束符
-
-
 # 数据集格式化函数
 def formatting_prompts_func(examples):
     instructions = examples["instruction"]
