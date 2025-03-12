@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-import ot  # POT (Python Optimal Transport) library for EMD calculation
+import ot  # POT (Python Optimal Transport) library for EMD_diff_probability calculation
 
 
 def align_embeddings(teacher_emb, student_emb, method="linear"):
@@ -46,13 +46,13 @@ def compute_emd_loss(
         student_emb,
         temperature=2.0, reduction='sum', mask=None):
     """
-    计算基于 EMD (Wasserstein 距离) 的蒸馏损失
+    计算基于 EMD_diff_probability (Wasserstein 距离) 的蒸馏损失
     teacher_logits: (batch, V_teacher)
     student_logits: (batch, V_student)
     teacher_emb: (V_teacher, D_teacher)
     student_emb: (V_student, D_student)
 
-    计算 EMD（compute_emd_loss）：
+    计算 EMD_diff_probability（compute_emd_loss）：
     - Softmax 归一化 logits，转化为概率分布。
     - 嵌入维度对齐，让教师和学生嵌入可以比较。
     - 计算代价矩阵（Cost Matrix），使用余弦相似度衡量 token 之间的距离。

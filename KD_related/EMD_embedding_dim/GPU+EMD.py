@@ -18,7 +18,7 @@ student_chunk_size = 500  # 减小 student 分块大小
 
 origin_student_path = "/root/shared-nvme/model/Qwen2.5-1.5B-bnb-4bit"
 teacher_path = "/root/shared-nvme/model/Qwen2.5-7B"
-cost_matrix_dir = "/root/shared-nvme/fixed_EMD/cost_matrix_chunks"
+cost_matrix_dir = "/root/shared-nvme/EMD_embedding_dim/cost_matrix_chunks"
 # 用于存储**成本矩阵（cost matrix）**分块的目录。
 
 def align_embeddings(teacher_emb, student_emb, method="linear", device="cuda"):
@@ -54,7 +54,7 @@ def align_embeddings(teacher_emb, student_emb, method="linear", device="cuda"):
 def precompute_cost_matrix_chunks(teacher_emb, student_emb, save_dir, chunk_size, student_chunk_size, method="linear"):
     '''
     作用:
-    计算 Wasserstein（EMD）损失所需的成本矩阵（cost matrix）
+    计算 Wasserstein（EMD_diff_probability）损失所需的成本矩阵（cost matrix）
     分块存储，减少计算和内存占用：
     余弦相似度计算：1 - F.cosine_similarity(...)，转换为“距离”。
     结果存入磁盘，用于后续训练。
@@ -112,8 +112,8 @@ def compute_emd_loss(
 ):
     '''
     作用：
-    计算基于 Sinkhorn-Knopp 逼近的 EMD 损失：
-    SamplesLoss(loss="sinkhorn")：用于计算 Wasserstein-1（EMD）。
+    计算基于 Sinkhorn-Knopp 逼近的 EMD_diff_probability 损失：
+    SamplesLoss(loss="sinkhorn")：用于计算 Wasserstein-1（EMD_diff_probability）。
     temperature=2.0：平滑 softmax 温度。
     chunk_size：减少计算开销。
 

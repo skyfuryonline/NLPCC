@@ -101,7 +101,7 @@ class EMDLossWithProjection(nn.Module):
 
     def forward(self, student_logits, teacher_logits, temperature=1.0, reduction='mean', padding_id=0, block_size=64):
         """
-        计算 EMD 损失，处理词表对齐和分块
+        计算 EMD_diff_probability 损失，处理词表对齐和分块
         输入：
             student_logits: (seq_length, student_vocab_size)
             teacher_logits: (seq_length, teacher_vocab_size)
@@ -155,7 +155,7 @@ class EMDLossWithProjection(nn.Module):
             w_T, w_S = self.update_weights(D, F, w_T, w_S, temperature)
             F = self.compute_flow(D, w_T, w_S)
 
-            # 计算 EMD
+            # 计算 EMD_diff_probability
             WORK = (F * D).sum()
             total_flow = F.sum()
             emd = WORK / total_flow.clamp(min=1e-6)
@@ -179,7 +179,7 @@ def test_emd_loss():
     student_logits = torch.randn(128, 151665)
     teacher_logits = torch.randn(128, 152000)
     loss = emd_loss_fn(student_logits, teacher_logits)
-    print(f"EMD Loss: {loss.item()}")
+    print(f"EMD_diff_probability Loss: {loss.item()}")
 
 
 if __name__=="__main__":

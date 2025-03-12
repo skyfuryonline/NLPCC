@@ -22,7 +22,7 @@ student, _ = FastLanguageModel.from_pretrained(
     load_in_4bit=load_in_4bit,  # 4bit量化加载
 )
 
-# Ensure the model is in evaluation mode
+# Ensure the model is in evaluation system mode
 teacher.eval()
 student.eval()
 

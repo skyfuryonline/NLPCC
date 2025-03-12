@@ -49,7 +49,7 @@ def compute_wasserstein_loss(
     mask = (target != padding_id).float() if target is not None else None
 
     if wasserstein_version == 1:
-        # 使用 EMD (Wasserstein-1) 损失
+        # 使用 EMD_diff_probability (Wasserstein-1) 损失
         return compute_emd_loss(
             teacher_logits=teacher_logits,
             student_logits=logits,

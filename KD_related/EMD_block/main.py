@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from transformers import TrainingArguments, Trainer
 from unsloth import FastLanguageModel
 from datasets import load_dataset
-from emd_loss import EMDLossWithProjection  # 导入新的 EMD 损失类
+from emd_loss import EMDLossWithProjection  # 导入新的 EMD_diff_probability 损失类
 
 origin_student_path = "/root/shared-nvme/model/Qwen2.5-1.5B-bnb-4bit"
 teacher_path = "/root/shared-nvme/model/Qwen2.5-7B"
@@ -16,7 +16,6 @@ load_in_4bit = True  # 使用4bit量化减少内存占用
 
 
 # 自定义 KDTrainer 类
-# 训练代码部分调整
 class KDTrainer(Trainer):
     def __init__(self, *args, teacher_model=None, if_use_entropy=None, temperature=1.0, reduction="mean", block_size=64,
                  **kwargs):
@@ -28,29 +27,49 @@ class KDTrainer(Trainer):
         self.block_size = block_size
         self.padding_id = self.tokenizer.pad_token_id if self.tokenizer.pad_token_id is not None else 0
 
+        # 初始化 EMD_diff_probability 损失函数，传入学生和教师的词表大小
         student_vocab_size = self.model.config.vocab_size
         teacher_vocab_size = self.teacher_model.config.vocab_size
         self.emd_loss_fn = EMDLossWithProjection(student_vocab_size, teacher_vocab_size).to(self.model.device)
 
     def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        # 学生模型前向传播
         outputs_student = model(**inputs)
         student_logits = outputs_student.logits  # [batch_size, seq_length, vocab_size]
-        ce_loss = outputs_student.loss
 
+        ce_loss = outputs_student.loss  # 默认的语言建模损失
+
+        # 获取目标序列
+        target_ids = inputs["labels"]  # [batch_size, seq_length]
+
+        # 教师模型推理（不计算梯度）
         with torch.no_grad():
             teacher_outputs = self.teacher_model(**inputs)
             teacher_logits = teacher_outputs.logits  # [batch_size, seq_length, vocab_size]
 
-        # 直接计算整个批次的 EMD 损失
-        emd_loss = self.emd_loss_fn(
-            student_logits,
-            teacher_logits,
-            temperature=self.temperature,
-            reduction=self.reduction,
-            padding_id=self.padding_id,
-            block_size=self.block_size
-        )
+        # 计算 EMD_diff_probability 损失（批次维度逐个处理）
+        batch_size = student_logits.shape[0]
+        emd_loss_total = 0.0
+        for b in range(batch_size):
+            student_logits_b = student_logits[b]  # [seq_length, vocab_size]
+            teacher_logits_b = teacher_logits[b]  # [seq_length, vocab_size]
+            emd_loss_b = self.emd_loss_fn(
+                student_logits_b,
+                teacher_logits_b,
+                temperature=self.temperature,
+                reduction=self.reduction,
+                padding_id=self.padding_id,
+                block_size=self.block_size
+            )
+            emd_loss_total += emd_loss_b
 
+        # EMD_diff_probability 损失平均或求和
+        if self.reduction == "mean":
+            emd_loss = emd_loss_total / batch_size
+        else:  # "sum"
+            emd_loss = emd_loss_total
+
+        # 组合损失
         loss_total = emd_loss
         if self.if_use_entropy:
             loss_total = loss_total + ce_loss
@@ -58,7 +77,6 @@ class KDTrainer(Trainer):
         return (loss_total, outputs_student) if return_outputs else loss_total
 
 
-# 其余训练代码保持不变
 # 加载学生模型
 student, _ = FastLanguageModel.from_pretrained(
     model_name=origin_student_path,

@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 class EMDLossWithProjection(nn.Module):
     '''
-    功能：这是一个基于Earth Mover's Distance (EMD，地球移动距离，也称Wasserstein距离)的损失函数模块，
+    功能：这是一个基于Earth Mover's Distance (EMD_diff_probability，地球移动距离，也称Wasserstein距离)的损失函数模块，
     用于知识蒸馏（Knowledge Distillation, KD）。它通过投影层对齐学生模型和教师模型的词汇表大小。
     '''
     def __init__(self, student_vocab_size, teacher_vocab_size):
@@ -134,7 +134,7 @@ class EMDLossWithProjection(nn.Module):
 
     def forward(self, student_logits, teacher_logits, temperature=1.0, reduction='mean', padding_id=0, block_size=64):
         """
-        计算 EMD 损失，支持三维输入
+        计算 EMD_diff_probability 损失，支持三维输入
 
         功能：计算整个EMD损失，支持批处理和分块计算。
         输入：学生和教师logits、温度参数、归约方式等。
@@ -190,7 +190,7 @@ class EMDLossWithProjection(nn.Module):
             w_T, w_S = self.update_weights(D, F, w_T, w_S, temperature)
             F = self.compute_flow(D, w_T, w_S)
 
-            # 计算 EMD
+            # 计算 EMD_diff_probability
             WORK = (F * D).sum(dim=[1, 2])  # (batch_size,)
             total_flow = F.sum(dim=[1, 2])  # (batch_size,)
             emd = WORK / total_flow.clamp(min=1e-6)

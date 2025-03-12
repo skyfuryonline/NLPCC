@@ -1,17 +1,9 @@
-from transformers import Trainer
-from datasets import load_dataset
 # 导入unsloth库中的FastLanguageModel模块，用于高效加载和训练大模型
 from unsloth import FastLanguageModel
-from trl import SFTTrainer, SFTConfig
-from transformers import Trainer, TrainingArguments
+
 # 导入PyTorch相关模块
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
 # 导入自定义的损失函数模块
-from losses import compute_fkl
 # 导入Hugging Face的dataset模块
-from datasets import load_dataset
 
 
 # 配置参数
