@@ -7,8 +7,8 @@ os.environ["WANDB_PROJECT"] = "KD"
 os.environ['WANDB_API_KEY'] = "a464ce6c3b972e3e7090ac20839b9a1daac1b608"
 wandb.init()
 
-origin_student_path = "/root/shared-nvme/model/Qwen2.5-1.5B"
-teacher_path = "/root/shared-nvme/model/Qwen2.5-7B"
+origin_student_path = "/root/shared-nvme/model/unsloth/Qwen2.5-1.5B"
+teacher_path = "/root/shared-nvme/model/unsloth/Qwen2.5-7B"
 
 # 导入unsloth库中的FastLanguageModel模块，用于高效加载和训练大模型
 from unsloth import FastLanguageModel
@@ -23,7 +23,7 @@ from transformers import Trainer, TrainingArguments
 from trl import SFTTrainer, SFTConfig
 
 # 导入自定义的损失函数模块
-from loss import  compute_ot_loss_improved
+from loss import compute_ot_loss_improved
 
 # 导入Hugging Face的dataset模块
 from datasets import load_dataset
@@ -33,6 +33,10 @@ max_seq_length = 2048  # 最大序列长度，支持RoPE扩展
 dtype = None  # 自动检测数据类型（Tesla T4/V100用float16，Ampere用bfloat16）
 load_in_4bit = True  # 使用4bit量化减少内存占用
 
+epoch = 10
+temperature = 2.0
+reduction = "sum"
+alpha = 0.5
 
 # 自定义知识蒸馏训练器（继承自SFTTrainer）
 class KDTrainer(SFTTrainer):
@@ -44,40 +48,37 @@ class KDTrainer(SFTTrainer):
 
     def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
         """ 计算知识蒸馏的损失 """
-        # 前向传播获取 student 输出
         outputs_student = model(**inputs)
 
-        # 获取 teacher 输出（无梯度计算）
         with torch.no_grad():
             teacher_outputs = self.teacher_model(**inputs)
 
         # 获取 logits
-        student_logits = outputs_student.logits  # (batch_size, seq_len, vocab_size_s)
-        teacher_logits = teacher_outputs.logits  # (batch_size, seq_len, vocab_size_t)
+        student_logits = outputs_student.logits
+        teacher_logits = teacher_outputs.logits
 
-        # 获取交叉熵损失
-        loss_ce = outputs_student.loss  # 假设 model 返回了 loss
+        loss_ce = outputs_student.loss  # 交叉熵损失
 
         # 获取词嵌入
-        student_embeddings = model.get_input_embeddings().weight  # (vocab_size_s, student_embed_dim), e.g., (151665, 1536)
-        teacher_embeddings = self.teacher_model.get_input_embeddings().weight  # (vocab_size_t, teacher_embed_dim), e.g., (151665, 3584)
+        student_embeddings = student.get_input_embeddings().weight  # (151665, 1536)
+        teacher_embeddings = teacher.get_input_embeddings().weight  # (151665, 3584)
 
         # 计算 OT 蒸馏损失
-        ot_loss = 0.0  # 默认值
+        ot_loss = 0
         if isinstance(student_logits, torch.Tensor) and isinstance(teacher_logits, torch.Tensor):
-            labels = inputs.get('labels', None)  # 获取标签，可能为 None
+            labels = inputs.get('labels', None)  # 可能为空
+
             ot_loss = compute_ot_loss_improved(
-                student_logits,
-                teacher_logits,
-                student_embeddings,  # 直接传入
-                teacher_embeddings,  # 直接传入
-                target=labels,
-                padding_id=-100,
-                reduction="sum",
-                temp=2.0
+                student_logits, teacher_logits,
+                student_embeddings=student_embeddings,
+                teacher_embeddings=teacher_embeddings,
+                target=labels, padding_id=-100,
+                reduction=reduction,
+                temp=temperature,
             )
-        # 组合损失（示例）
-        loss_total = 0.5*loss_ce + 0.5*ot_loss  # 根据需求调整权重
+
+        # 组合最终损失
+        loss_total = alpha * ot_loss + (1 - alpha) * loss_ce if self.if_use_entropy else ot_loss
 
         # 记录损失
         if hasattr(wandb, "log"):
@@ -156,13 +157,10 @@ from datasets import load_dataset
 dataset = load_dataset("yahma/alpaca-cleaned", split="train[:2000]")
 dataset = dataset.map(formatting_prompts_func, batched=True, )
 
-val_dataset = load_dataset("yahma/alpaca-cleaned", split="train[2000:3000]")
-val_dataset = val_dataset.map(formatting_prompts_func, batched=True, )
-
 # 配置训练参数
 args = TrainingArguments(
     output_dir='./results',  # 输出目录
-    num_train_epochs=10,  # 训练轮次
+    num_train_epochs=epoch,  # 训练轮次
 
     do_train=True,  # 启用训练模式
 
@@ -173,7 +171,7 @@ args = TrainingArguments(
     logging_steps=50,  # 日志记录间隔
 
     save_strategy="epoch",
-    save_total_limit=2,
+    save_total_limit=1,
     report_to=["wandb"],
     bf16=True,
     learning_rate=0.0005,
