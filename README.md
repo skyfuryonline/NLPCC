@@ -54,3 +54,6 @@
 [esconv](https://huggingface.co/datasets/thu-coai/esconv)  
 [augesc](https://huggingface.co/datasets/thu-coai/augesc)  
 [empathetic_dialogues](https://huggingface.co/datasets/facebook/empathetic_dialogues)  
+[TRL from hugginface](https://github.com/huggingface/trl)  
+[TRL的使用doc](https://huggingface.co/docs/trl/learning_tools)  
+
