@@ -1,1 +1,1 @@
-python main.py && myMetrics
+python main.py && myMetrics.py
