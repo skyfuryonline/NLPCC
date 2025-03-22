@@ -1,5 +1,3 @@
-from datasets import load_dataset
-
 # # 下载数据集
 # dataset = load_dataset("yahma/alpaca-cleaned", cache_dir="../data")
 # print(dataset)
@@ -19,8 +17,8 @@ from datasets import load_dataset
 train_dataset = load_dataset("yahma/alpaca-cleaned",cache_dir="../data", split = "train[:2000]")
 val_dataset = load_dataset("yahma/alpaca-cleaned",cache_dir="../data", split = "train[2000:3000]")
 
-print(train_dataset)
-print(val_dataset)
+# print(train_dataset)
+# print(val_dataset)
 '''
 Dataset({
     features: ['output', 'input', 'instruction'],
