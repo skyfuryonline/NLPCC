@@ -1,0 +1,1 @@
+python main.py && python latest_myMetrics_bleu_rougel_kl.py

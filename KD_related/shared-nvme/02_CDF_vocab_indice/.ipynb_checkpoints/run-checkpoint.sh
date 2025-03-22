@@ -1,0 +1,1 @@
+python decoder_kd_temp_EMD.py && python latest_myMetrics_bleu_rougel_kl.py
