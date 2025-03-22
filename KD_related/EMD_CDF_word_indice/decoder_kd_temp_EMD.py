@@ -32,8 +32,8 @@ max_seq_length = 2048  # 最大序列长度，支持RoPE扩展
 dtype = None  # 自动检测数据类型（Tesla T4/V100用float16，Ampere用bfloat16）
 load_in_4bit = True  # 使用4bit量化减少内存占用
 
-origin_student_path ="/root/shared-nvme/model/Qwen2.5-1.5B-bnb-4bit"
-teacher_path = "/root/shared-nvme/model/Qwen2.5-7B"
+origin_student_path ="/root/shared-nvme/models/Qwen2.5-1.5B-bnb-4bit"
+teacher_path = "/root/shared-nvme/models/Qwen2.5-7B"
 
 # 自定义知识蒸馏训练器（继承自SFTTrainer）
 class KDTrainer(SFTTrainer):
@@ -45,7 +45,7 @@ class KDTrainer(SFTTrainer):
 
         *args：用于收集额外的位置参数（以元组形式传入）
 
-        当你初始化 Trainer 时，你会传入 model=student_model，这个模型会赋值给 Trainer 实例的 self.model。
+        当你初始化 Trainer 时，你会传入 models=student_model，这个模型会赋值给 Trainer 实例的 self.models。
         '''
         super().__init__(*args, **kwargs)
         self.wasserstein_version = wasserstein_version
@@ -53,11 +53,11 @@ class KDTrainer(SFTTrainer):
         self.if_use_entropy = if_use_entropy  # 是否使用交叉熵的标记
 
     def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
-        #在训练或评估时，Trainer 内部会调用 self.model 来进行前向传播（例如 compute_loss 中传入的 model 参数就是 self.model）
+        #在训练或评估时，Trainer 内部会调用 self.models 来进行前向传播（例如 compute_loss 中传入的 models 参数就是 self.models）
         '''
         Trainer 的训练循环中，会调用类似 training_step 的方法，
-        而这个方法内部会把 self.model（也就是传入的 student_model）和当前 batch 的输入数据（inputs）传入 compute_loss。
-        因此，compute_loss 接收到的 model 参数通常就是 self.model
+        而这个方法内部会把 self.models（也就是传入的 student_model）和当前 batch 的输入数据（inputs）传入 compute_loss。
+        因此，compute_loss 接收到的 models 参数通常就是 self.models
         '''
         # 学生模型前向传播
         outputs_student = model(**inputs)
@@ -131,7 +131,7 @@ teacher, tokenizer = FastLanguageModel.from_pretrained(
 )
 teacher.eval()  # 固定教师模型参数
 '''
-Dropout 层：在训练模式（model.train()）下，Dropout 会随机丢弃神经元以增强泛化性；
+Dropout 层：在训练模式（models.train()）下，Dropout 会随机丢弃神经元以增强泛化性；
 但在评估模式下，Dropout 完全失效，所有神经元都会参与计算。
 
 BatchNorm 层：在训练时，BatchNorm 会计算当前 batch 的均值和方差；

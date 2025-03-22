@@ -10,9 +10,9 @@ from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 import numpy as np
 import re
 
-origin_student_path = "/root/shared-nvme/model/Qwen2.5-1.5B-bnb-4bit"
+origin_student_path = "/root/shared-nvme/models/Qwen2.5-1.5B-bnb-4bit"
 distill_student_path = "./results/checkpoint-620"
-teacher_path = "/root/shared-nvme/model/Qwen2.5-7B"
+teacher_path = "/root/shared-nvme/models/Qwen2.5-7B"
 
 # 配置参数（保持不变）
 max_seq_length = 2048
@@ -114,7 +114,7 @@ def generate_response_batch_with_logits(model, tokenizer, instructions, input_te
         logits = outputs.logits  # 形状: [batch_size, seq_len, vocab_size]
 
 
-        # 使用 model.generate 生成高质量响应
+        # 使用 models.generate 生成高质量响应
         generated_ids = model.generate(
             **inputs,
             max_new_tokens=max_new_tokens,

@@ -16,7 +16,7 @@ text_input = 'Create a MongoDB query to retrieve data within a specific range.'
 
 # 初始化学生模型（使用unsloth的优化实现）
 old_student, _ = FastLanguageModel.from_pretrained(
-    model_name="/root/shared-nvme/model/Qwen2.5-1.5B-bnb-4bit",  # 1.5B参数的千问模型
+    model_name="/root/shared-nvme/models/Qwen2.5-1.5B-bnb-4bit",  # 1.5B参数的千问模型
     max_seq_length=max_seq_length,
     dtype=dtype,
     load_in_4bit=load_in_4bit,  # 4bit量化加载
@@ -60,7 +60,7 @@ student = FastLanguageModel.get_peft_model(
 
 # 初始化teacher模型
 teacher, tokenizer = FastLanguageModel.from_pretrained(
-    model_name="/root/shared-nvme/model/Qwen2.5-7B",  # 7B参数的千问模型
+    model_name="/root/shared-nvme/models/Qwen2.5-7B",  # 7B参数的千问模型
     max_seq_length=max_seq_length,
     dtype=dtype,
     load_in_4bit=load_in_4bit,  # 4bit量化加载

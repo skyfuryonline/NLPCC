@@ -28,10 +28,10 @@ def find_checkpoint():
 
 checkpoint_path = find_checkpoint()
 
-origin_student_path = "/root/shared-nvme/model/unsloth/Qwen2.5-1.5B"
+origin_student_path = "/root/shared-nvme/models/unsloth/Qwen2.5-1.5B"
 # distill_student_path = "./results/checkpoint-310"
 distill_student_path = checkpoint_path
-teacher_path = "/root/shared-nvme/model/unsloth/Qwen2.5-7B"
+teacher_path = "/root/shared-nvme/models/unsloth/Qwen2.5-7B"
 
 # 优化后的 compute_fkl，支持批量计算（同时支持 "none"、"sum"、"mean" 三种 reduction 模式）
 def compute_fkl(logits, teacher_logits, target, padding_id=-100, reduction="sum", temp=2.0):
@@ -136,7 +136,7 @@ def generate_response_batch_with_logits(model, tokenizer, instructions, input_te
         outputs = model(**inputs)
         logits = outputs.logits  # 形状: [batch_size, seq_len, vocab_size]
 
-        # 使用 model.generate 生成高质量响应
+        # 使用 models.generate 生成高质量响应
         generated_ids = model.generate(
             **inputs,
             max_new_tokens=max_new_tokens,

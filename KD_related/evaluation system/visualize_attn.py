@@ -8,7 +8,7 @@ max_seq_length = 2048  # 最大序列长度，支持RoPE扩展
 dtype = None  # 自动检测数据类型（Tesla T4/V100用float16，Ampere用bfloat16）
 load_in_4bit = True  # 使用4bit量化减少内存占用
 
-# Load the model and tokenizer
+# Load the models and tokenizer
 teacher, tokenizer = FastLanguageModel.from_pretrained(
     model_name="",  # 7B参数的教师模型
     max_seq_length=max_seq_length,
@@ -22,7 +22,7 @@ student, _ = FastLanguageModel.from_pretrained(
     load_in_4bit=load_in_4bit,  # 4bit量化加载
 )
 
-# Ensure the model is in evaluation system mode
+# Ensure the models is in evaluation system mode
 teacher.eval()
 student.eval()
 
@@ -66,8 +66,8 @@ def visualize_attention(attention_weights, title):
     plt.ylabel('Token Index')
     plt.show()
 
-# Visualize the attention weights for the teacher model
+# Visualize the attention weights for the teacher models
 visualize_attention(teacher_attention_weights, 'Teacher Model Attention Weights')
 
-# Visualize the attention weights for the student model
+# Visualize the attention weights for the student models
 visualize_attention(student_attention_weights, 'Student Model Attention Weights')

@@ -56,7 +56,7 @@ def compute_fkl(logits, teacher_logits, target, padding_id=-100, reduction="sum"
     
 # 加载教师模型
 teacher, tokenizer = FastLanguageModel.from_pretrained(
-    model_name="/root/shared-nvme/model/Qwen2.5-7B",
+    model_name="/root/shared-nvme/models/Qwen2.5-7B",
     max_seq_length=max_seq_length,
     dtype=dtype,
     load_in_4bit=load_in_4bit,
@@ -65,7 +65,7 @@ teacher.eval()
 
 # 加载原始小模型
 original_student, _ = FastLanguageModel.from_pretrained(
-    model_name="/root/shared-nvme/model/Qwen2.5-1.5B-bnb-4bit",
+    model_name="/root/shared-nvme/models/Qwen2.5-1.5B-bnb-4bit",
     max_seq_length=max_seq_length,
     dtype=dtype,
     load_in_4bit=load_in_4bit,
@@ -231,12 +231,12 @@ def evaluate_response_only(teacher, original_student, distilled_student, dataset
     }
 
 # # 生成 response 的函数
-# def generate_response(model, tokenizer, instruction, input_text, max_new_tokens=512):
+# def generate_response(models, tokenizer, instruction, input_text, max_new_tokens=512):
 #     prompt = alpaca_prompt.format(instruction, input_text, "")
-#     inputs = tokenizer(prompt, return_tensors="pt", padding=True, truncation=True, max_length=max_seq_length).to(model.device)
+#     inputs = tokenizer(prompt, return_tensors="pt", padding=True, truncation=True, max_length=max_seq_length).to(models.device)
     
 #     with torch.no_grad():
-#         outputs = model.generate(**inputs, max_new_tokens=max_new_tokens, pad_token_id=tokenizer.eos_token_id)
+#         outputs = models.generate(**inputs, max_new_tokens=max_new_tokens, pad_token_id=tokenizer.eos_token_id)
 #     generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
 #     return extract_response(generated_text)
 
