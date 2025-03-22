@@ -5,8 +5,8 @@ os.environ["WANDB_PROJECT"] = "KD"
 os.environ['WANDB_API_KEY'] = "a464ce6c3b972e3e7090ac20839b9a1daac1b608"
 wandb.init()
 
-origin_student_path = "/root/shared-nvme-local_backup/models/Qwen2.5-1.5B-bnb-4bit"
-teacher_path = "/root/shared-nvme-local_backup/models/Qwen2.5-7B"
+origin_student_path = "/root/shared-nvme-local_backup/model/unsloth/Qwen2.5-1.5B"
+teacher_path = "/root/shared-nvme-local_backup/model/unsloth/Qwen2.5-7B"
 
 # 导入unsloth库中的FastLanguageModel模块，用于高效加载和训练大模型
 from unsloth import FastLanguageModel
@@ -21,13 +21,11 @@ from transformers import Trainer, TrainingArguments
 from trl import SFTTrainer, SFTConfig
 
 # 导入自定义的损失函数模块
-from losses import compute_ot_loss
-from method1_top_k import compute_ot_loss_topk
-from method1_improved import compute_ot_loss_topk_sinkhorn
+# from losses import compute_ot_loss
+# from method1_top_k import compute_ot_loss_topk
+# from method1_improved import compute_ot_loss_topk_sinkhorn
 from method1_improved_2 import compute_ot_loss_improved
 
-
-from KL_OT import compute_ot_kl_loss
 
 # 导入Hugging Face的dataset模块
 from datasets import load_dataset
@@ -37,17 +35,23 @@ max_seq_length = 2048  # 最大序列长度，支持RoPE扩展
 dtype = None  # 自动检测数据类型（Tesla T4/V100用float16，Ampere用bfloat16）
 load_in_4bit = True  # 使用4bit量化减少内存占用
 
+epoch = 20
+temperature = 2.0
+reduction = "sum"
+topk = 150
+# 150
+# 24131MiB /  24564MiB 占用超级高
+alpha = 0.5
 
+chunk_size = 4
 
+# 自定义知识蒸馏训练器（继承自SFTTrainer）
 class KDTrainer(SFTTrainer):
-    def __init__(self, *args, teacher_model=None, if_use_entropy=False, student_embed_dim=1536, teacher_embed_dim=3584, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.teacher_model = teacher_model
-        self.if_use_entropy = if_use_entropy
 
-        # 定义可训练的投影层
-        self.projection = nn.Linear(student_embed_dim, teacher_embed_dim, bias=False).to(self.args.device)
-        nn.init.orthogonal_(self.projection.weight)
+    def __init__(self, *args, teacher_model=None, if_use_entropy=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.teacher_model = teacher_model  # 教师模型
+        self.if_use_entropy = if_use_entropy  # 是否使用交叉熵损失
 
     def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
         """ 计算知识蒸馏的损失 """
@@ -56,56 +60,71 @@ class KDTrainer(SFTTrainer):
         with torch.no_grad():
             teacher_outputs = self.teacher_model(**inputs)
 
+        # 获取 logits
         student_logits = outputs_student.logits
         teacher_logits = teacher_outputs.logits
-        loss_ce = outputs_student.loss
+        
+        loss_ce = outputs_student.loss  # 交叉熵损失
+       
+        # 获取词嵌入
+        student_embeddings = student.get_input_embeddings().weight  # (151665, 1536)
+        teacher_embeddings = teacher.get_input_embeddings().weight  # (151665, 3584)
 
-        student_embeddings = model.get_input_embeddings().weight
-        teacher_embeddings = self.teacher_model.get_input_embeddings().weight
-
+        # 计算 OT 蒸馏损失
         ot_loss = 0
         if isinstance(student_logits, torch.Tensor) and isinstance(teacher_logits, torch.Tensor):
-            labels = inputs.get('labels', None)
-            ot_loss = compute_ot_kl_loss(
+            labels = inputs.get('labels', None)  # 可能为空
+            
+            # ot_loss = compute_ot_loss(
+            #     student_logits, teacher_logits, 
+            #     target=labels, padding_id=-100, 
+            #     reduction="sum", temp=2.0, sinkhorn_reg=0.01
+            # )
+
+            # 计算 Sinkhorn-Knopp OT 损失
+            # ot_loss = compute_ot_loss_sinkhorn(
+            #     student_logits, teacher_logits, 
+            #     target=labels, padding_id=-100, 
+            #     reduction="sum", temp=2.0, sinkhorn_reg=0.01
+            # )
+
+            # # # 计算 Top-k OT 损失（去掉 sinkhorn_reg 参数）
+            # ot_loss = compute_ot_loss_topk(
+            #     student_logits, teacher_logits, 
+            #     target=labels, padding_id=-100, 
+            #     reduction="sum", temp=2.0, topk=50000  # 添加 topk 参数
+            # )
+        
+            # # 改进method1
+            # ot_loss = compute_ot_loss_topk_sinkhorn(
+            #     student_logits, teacher_logits, 
+            #     student_embeddings=student_embeddings,
+            #     teacher_embeddings=teacher_embeddings,
+            #     target=labels, padding_id=-100, 
+            #     reduction="sum", temp=2.0, topk=100  # 添加 topk 参数
+            # )
+
+            
+            ## 改进method1_2
+            ot_loss = compute_ot_loss_improved(
                 student_logits, teacher_logits, 
                 student_embeddings=student_embeddings,
                 teacher_embeddings=teacher_embeddings,
-                projection=self.projection,
                 target=labels, padding_id=-100, 
-                reduction="sum", temp=2.0, topk=100
+                reduction=reduction,
+                temp=temperature,
+                topk=topk,  # 添加 topk 参数
+                chunk_size = chunk_size,
             )
 
-        loss_total = 0.5 * ot_loss + 0.5 * loss_ce if self.if_use_entropy else ot_loss
+        # 组合最终损失
+        loss_total = alpha * ot_loss + (1-alpha) * loss_ce if self.if_use_entropy else ot_loss
 
+        # 记录损失
         if hasattr(wandb, "log"):
             wandb.log({"train_loss": loss_total.item()})
 
         return (loss_total, outputs_student) if return_outputs else loss_total
-
-    def training_step(self, model, inputs, num_items_in_batch=None):
-        """ 重写 training_step 以确保 projection 的参数被优化 """
-        model.train()
-        inputs = self._prepare_inputs(inputs)
-
-        with self.compute_loss_context_manager():
-            loss = self.compute_loss(model, inputs)
-
-        if self.args.n_gpu > 1:
-            loss = loss.mean()
-
-        if self.do_grad_scaling:
-            self.scaler.scale(loss).backward()
-            self.scaler.step(self.optimizer)
-            self.scaler.update()
-        else:
-            loss.backward()
-            self.optimizer.step()
-
-        self.lr_scheduler.step()
-        model.zero_grad()
-        self.projection.zero_grad()
-        return loss.detach()
-
 
 
 # 初始化学生模型（使用unsloth的优化实现）
@@ -176,13 +195,12 @@ from datasets import load_dataset
 dataset = load_dataset("yahma/alpaca-cleaned", split = "train[:2000]")
 dataset = dataset.map(formatting_prompts_func, batched = True,)
 
-val_dataset = load_dataset("yahma/alpaca-cleaned", split = "train[2000:3000]")
-val_dataset = val_dataset.map(formatting_prompts_func, batched = True,)
+
 
 # 配置训练参数
 args = TrainingArguments(
     output_dir='./results',  # 输出目录
-    num_train_epochs=10,  # 训练轮次
+    num_train_epochs=epoch,  # 训练轮次
 
     do_train=True,  # 启用训练模式
 
@@ -193,7 +211,7 @@ args = TrainingArguments(
     logging_steps=50,  # 日志记录间隔
 
     save_strategy="epoch",
-    save_total_limit=2,
+    save_total_limit=1,
     report_to=["wandb"],
     bf16=True,
     learning_rate=0.0005,
@@ -205,10 +223,7 @@ args = TrainingArguments(
 trainer = KDTrainer(
     model=student,  # 学生模型
     teacher_model=teacher,  # 教师模型
-    
-    student_embed_dim=1536,  # 传递学生嵌入维度
-    teacher_embed_dim=3584,  # 传递教师嵌入维度
-    
+
     if_use_entropy=True,  # 启用混合损失
     processing_class=tokenizer,  # 使用教师模型的tokenizer
 
@@ -221,13 +236,6 @@ trainer = KDTrainer(
     args=args,  # 训练参数配置
 )
 
-# 将 projection 参数加入优化器
-from torch.optim import AdamW
-optimizer = AdamW(
-    list(trainer.model.parameters()) + list(trainer.projection.parameters()), 
-    lr=args.learning_rate
-)
-trainer.optimizer = optimizer  # 替换默认优化器
 # 如果是初次训练resume_from_checkpoint为false，接着checkpoint继续训练，为True
 # 需要当前的epoch比上次的大
 trainer.train(resume_from_checkpoint=False)

@@ -25,13 +25,13 @@ def compute_fkl(logits, teacher_logits, target, padding_id=-100, reduction="sum"
     '''
     如果不调整序列长度，会遇到如下问题：
     Traceback (most recent call last):
-      File "/root/shared-nvme/myMetricsonBleu&KL.py", line 297, in <module>
+      File "/root/shared-nvme-local_backup/myMetricsonBleu&KL.py", line 297, in <module>
         results = evaluate_response_only(teacher, original_student, distilled_student, val_dataset, tokenizer)
                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      File "/root/shared-nvme/myMetricsonBleu&KL.py", line 150, in evaluate_response_only
+      File "/root/shared-nvme-local_backup/myMetricsonBleu&KL.py", line 150, in evaluate_response_only
         kl_orig = compute_fkl(
                   ^^^^^^^^^^^^
-      File "/root/shared-nvme/myMetricsonBleu&KL.py", line 34, in compute_fkl
+      File "/root/shared-nvme-local_backup/myMetricsonBleu&KL.py", line 34, in compute_fkl
         kl = (teacher_probs * (teacher_log_probs - log_probs))
                                ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~
     RuntimeError: The size of tensor a (140) must match the size of tensor b (512) at non-singleton dimension 1
@@ -56,7 +56,7 @@ def compute_fkl(logits, teacher_logits, target, padding_id=-100, reduction="sum"
     
 # 加载教师模型
 teacher, tokenizer = FastLanguageModel.from_pretrained(
-    model_name="/root/shared-nvme/models/Qwen2.5-7B",
+    model_name="/root/shared-nvme-local_backup/models/Qwen2.5-7B",
     max_seq_length=max_seq_length,
     dtype=dtype,
     load_in_4bit=load_in_4bit,
@@ -65,7 +65,7 @@ teacher.eval()
 
 # 加载原始小模型
 original_student, _ = FastLanguageModel.from_pretrained(
-    model_name="/root/shared-nvme/models/Qwen2.5-1.5B-bnb-4bit",
+    model_name="/root/shared-nvme-local_backup/models/Qwen2.5-1.5B-bnb-4bit",
     max_seq_length=max_seq_length,
     dtype=dtype,
     load_in_4bit=load_in_4bit,

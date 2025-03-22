@@ -6,8 +6,8 @@ from unsloth import FastLanguageModel
 from datasets import load_dataset
 from emd_loss import EMDLossWithProjection  # 导入新的 EMD_diff_probability 损失类
 
-origin_student_path = "/root/shared-nvme/models/Qwen2.5-1.5B-bnb-4bit"
-teacher_path = "/root/shared-nvme/models/Qwen2.5-7B"
+origin_student_path = "/root/shared-nvme-local_backup/models/Qwen2.5-1.5B-bnb-4bit"
+teacher_path = "/root/shared-nvme-local_backup/models/Qwen2.5-7B"
 # 配置参数
 max_seq_length = 2048  # 最大序列长度，支持RoPE扩展
 dtype = None  # 自动检测数据类型（Tesla T4/V100用float16，Ampere用bfloat16）

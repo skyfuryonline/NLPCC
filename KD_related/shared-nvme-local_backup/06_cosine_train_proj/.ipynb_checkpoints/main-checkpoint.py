@@ -5,8 +5,8 @@ os.environ["WANDB_PROJECT"] = "KD"
 os.environ['WANDB_API_KEY'] = "a464ce6c3b972e3e7090ac20839b9a1daac1b608"
 wandb.init()
 
-origin_student_path = "/root/shared-nvme-local_backup/models/unsloth/Qwen2.5-1.5B"
-teacher_path = "/root/shared-nvme-local_backup/models/unsloth/Qwen2.5-7B"
+origin_student_path = "/root/shared-nvme-local_backup/model/unsloth/Qwen2.5-1.5B"
+teacher_path = "/root/shared-nvme-local_backup/model/unsloth/Qwen2.5-7B"
 
 
 # 导入unsloth库中的FastLanguageModel模块，用于高效加载和训练大模型
@@ -28,10 +28,10 @@ max_seq_length = 2048
 dtype = None
 load_in_4bit = True
 
-epoch = 10
+epoch = 20
 temperature = 2.0
 reduction = "sum"
-topk = 100
+topk = 150
 alpha = 0.5
 chunk_size = 4
 

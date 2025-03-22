@@ -16,9 +16,9 @@ load_in_4bit = True
 chunk_size = 500  # 减小分块大小
 student_chunk_size = 500  # 减小 student 分块大小
 
-origin_student_path = "/root/shared-nvme/models/Qwen2.5-1.5B-bnb-4bit"
-teacher_path = "/root/shared-nvme/models/Qwen2.5-7B"
-cost_matrix_dir = "/root/shared-nvme/EMD_embedding_dim/cost_matrix_chunks"
+origin_student_path = "/root/shared-nvme-local_backup/models/Qwen2.5-1.5B-bnb-4bit"
+teacher_path = "/root/shared-nvme-local_backup/models/Qwen2.5-7B"
+cost_matrix_dir = "/root/shared-nvme-local_backup/EMD_embedding_dim/cost_matrix_chunks"
 # 用于存储**成本矩阵（cost matrix）**分块的目录。
 
 def align_embeddings(teacher_emb, student_emb, method="linear", device="cuda"):

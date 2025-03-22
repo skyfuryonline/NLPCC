@@ -274,7 +274,7 @@ trainer.train(resume_from_checkpoint=False)
 #
 # # 初始化学生模型（使用unsloth的优化实现）
 # student, _ = FastLanguageModel.from_pretrained(
-#     model_name="/root/shared-nvme/results/checkpoint-620",  # 1.5B参数的千问模型
+#     model_name="/root/shared-nvme-local_backup/results/checkpoint-620",  # 1.5B参数的千问模型
 #     max_seq_length=max_seq_length,
 #     dtype=dtype,
 #     load_in_4bit=load_in_4bit,  # 4bit量化加载
@@ -282,7 +282,7 @@ trainer.train(resume_from_checkpoint=False)
 #
 # # 初始化teacher模型
 # teacher, tokenizer = FastLanguageModel.from_pretrained(
-#     model_name="/root/shared-nvme/models/Qwen2.5-7B",  # 7B参数的千问模型
+#     model_name="/root/shared-nvme-local_backup/models/Qwen2.5-7B",  # 7B参数的千问模型
 #     max_seq_length=max_seq_length,
 #     dtype=dtype,
 #     load_in_4bit=load_in_4bit,  # 4bit量化加载

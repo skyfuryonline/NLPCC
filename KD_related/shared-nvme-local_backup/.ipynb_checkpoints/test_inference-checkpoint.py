@@ -1,9 +1,17 @@
+from transformers import Trainer
+from datasets import load_dataset
 # 导入unsloth库中的FastLanguageModel模块，用于高效加载和训练大模型
 from unsloth import FastLanguageModel
-
+from trl import SFTTrainer, SFTConfig
+from transformers import Trainer, TrainingArguments
 # 导入PyTorch相关模块
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 # 导入自定义的损失函数模块
+from losses import compute_fkl
 # 导入Hugging Face的dataset模块
+from datasets import load_dataset
 
 
 # 配置参数
@@ -11,12 +19,13 @@ max_seq_length = 2048  # 最大序列长度，支持RoPE扩展
 dtype = None  # 自动检测数据类型（Tesla T4/V100用float16，Ampere用bfloat16）
 load_in_4bit = True  # 使用4bit量化减少内存占用
 
-text_input = 'Create a MongoDB query to retrieve data within a specific range.'
+# text_input = 'Create a MongoDB query to retrieve data within a specific range.'
+text_input = 'Show me python code to sort an array.'
 
 
 # 初始化学生模型（使用unsloth的优化实现）
 old_student, _ = FastLanguageModel.from_pretrained(
-    model_name="/root/shared-nvme-local_backup/models/Qwen2.5-1.5B-bnb-4bit",  # 1.5B参数的千问模型
+    model_name="/root/shared-nvme-local_backup/model/unsloth/Qwen2.5-1.5B-bnb-4bit",  # 1.5B参数的千问模型
     max_seq_length=max_seq_length,
     dtype=dtype,
     load_in_4bit=load_in_4bit,  # 4bit量化加载
@@ -39,7 +48,7 @@ FastLanguageModel.for_inference(old_student)
 
 # 初始化学生模型（使用unsloth的优化实现）
 student, _ = FastLanguageModel.from_pretrained(
-    model_name="/root/shared-nvme-local_backup/results/checkpoint-620",  # 1.5B参数的千问模型
+    model_name="/root/shared-nvme-local_backup/results/checkpoint-930",  # 1.5B参数的千问模型
     max_seq_length=max_seq_length,
     dtype=dtype,
     load_in_4bit=load_in_4bit,  # 4bit量化加载
@@ -60,7 +69,7 @@ student = FastLanguageModel.get_peft_model(
 
 # 初始化teacher模型
 teacher, tokenizer = FastLanguageModel.from_pretrained(
-    model_name="/root/shared-nvme-local_backup/models/Qwen2.5-7B",  # 7B参数的千问模型
+    model_name="/root/shared-nvme-local_backup/model/unsloth/Qwen2.5-7B",  # 7B参数的千问模型
     max_seq_length=max_seq_length,
     dtype=dtype,
     load_in_4bit=load_in_4bit,  # 4bit量化加载

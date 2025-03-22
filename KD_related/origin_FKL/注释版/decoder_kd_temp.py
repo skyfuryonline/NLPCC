@@ -69,13 +69,13 @@ class KDTrainer(SFTTrainer):
         下列就是不处理会遇到的问题： 
         Unsloth 2025.1.8 patched 28 layers with 28 QKV layers, 28 O layers and 28 MLP layers.
         Traceback (most recent call last):
-          File "/root/shared-nvme/myMetricsonBleu&KL.py", line 165, in <module>
+          File "/root/shared-nvme-local_backup/myMetricsonBleu&KL.py", line 165, in <module>
             results = evaluate_response_only(teacher, original_student, distilled_student, val_dataset, tokenizer)
                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-          File "/root/shared-nvme/myMetricsonBleu&KL.py", line 131, in evaluate_response_only
+          File "/root/shared-nvme-local_backup/myMetricsonBleu&KL.py", line 131, in evaluate_response_only
             kl_orig = compute_fkl(original_logits, teacher_logits, original_inputs["input_ids"])
                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-          File "/root/shared-nvme/myMetricsonBleu&KL.py", line 21, in compute_fkl
+          File "/root/shared-nvme-local_backup/myMetricsonBleu&KL.py", line 21, in compute_fkl
             kl = (teacher_probs * (teacher_log_probs - log_probs))
                                    ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~
         RuntimeError: The size of tensor a (152064) must match the size of tensor b (151936) at non-singleton dimension 2
@@ -282,7 +282,7 @@ trainer.train(resume_from_checkpoint=False)
 #
 # # 初始化学生模型（使用unsloth的优化实现）
 # student, _ = FastLanguageModel.from_pretrained(
-#     model_name="/root/shared-nvme/results/checkpoint-620",  # 1.5B参数的千问模型
+#     model_name="/root/shared-nvme-local_backup/results/checkpoint-620",  # 1.5B参数的千问模型
 #     max_seq_length=max_seq_length,
 #     dtype=dtype,
 #     load_in_4bit=load_in_4bit,  # 4bit量化加载
@@ -290,7 +290,7 @@ trainer.train(resume_from_checkpoint=False)
 #
 # # 初始化teacher模型
 # teacher, tokenizer = FastLanguageModel.from_pretrained(
-#     model_name="/root/shared-nvme/models/Qwen2.5-7B",  # 7B参数的千问模型
+#     model_name="/root/shared-nvme-local_backup/models/Qwen2.5-7B",  # 7B参数的千问模型
 #     max_seq_length=max_seq_length,
 #     dtype=dtype,
 #     load_in_4bit=load_in_4bit,  # 4bit量化加载

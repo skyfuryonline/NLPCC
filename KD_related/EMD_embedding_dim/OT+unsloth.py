@@ -27,8 +27,8 @@ max_seq_length = 2048
 dtype = None
 load_in_4bit = True
 
-origin_student_path = "/root/shared-nvme/models/Qwen2.5-1.5B-bnb-4bit"
-teacher_path = "/root/shared-nvme/models/Qwen2.5-7B"
+origin_student_path = "/root/shared-nvme-local_backup/models/Qwen2.5-1.5B-bnb-4bit"
+teacher_path = "/root/shared-nvme-local_backup/models/Qwen2.5-7B"
 
 
 def compute_wasserstein_loss(

@@ -19,9 +19,9 @@ reduction = "sum"
 topk = None
 
 
-origin_student_path = "/root/shared-nvme/models/Qwen2.5-1.5B-bnb-4bit"
+origin_student_path = "/root/shared-nvme-local_backup/models/Qwen2.5-1.5B-bnb-4bit"
 distill_student_path = "./results/checkpoint-310"
-teacher_path = "/root/shared-nvme/models/Qwen2.5-7B"
+teacher_path = "/root/shared-nvme-local_backup/models/Qwen2.5-7B"
 
 # 优化后的 compute_fkl，支持批量计算（同时支持 "none"、"sum"、"mean" 三种 reduction 模式）
 def compute_fkl(logits, teacher_logits, target, padding_id=-100, reduction="sum", temp=2.0):
