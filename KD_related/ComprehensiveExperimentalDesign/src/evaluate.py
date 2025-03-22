@@ -32,6 +32,8 @@ origin_student_path = "../models/unsloth/Qwen2.5-1.5B"
 distill_student_path = checkpoint_path
 teacher_path = "../models/unsloth/Qwen2.5-7B"
 
+# 这次记录的名字
+run_name = "OT_KD"
 
 # 优化后的 compute_fkl，支持批量计算（同时支持 "none"、"sum"、"mean" 三种 reduction 模式）
 def compute_fkl(logits, teacher_logits, target, padding_id=-100, reduction="sum", temp=2.0):
@@ -238,7 +240,7 @@ print(f"蒸馏模型 Rouge-L 分数: {results['Distilled Rouge-L']:.4f}")
 # 同步到制定文件内
 log_dir = "../results"
 os.makedirs(log_dir, exist_ok=True)
-result_file = os.path.join(log_dir, "evaluation_results.txt")
+result_file = os.path.join(log_dir, f"{run_name}.txt")
 # 写入评估结果到文件
 with open(result_file, "w", encoding="utf-8") as f:
     f.write("评估结果（仅针对响应）：\n")
