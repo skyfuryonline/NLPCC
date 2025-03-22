@@ -21,6 +21,7 @@ from trl import SFTTrainer, SFTConfig
 from OTloss import OT_loss
 
 # 配置模型路径
+# 请改为完整路径
 origin_student_path = "../models/unsloth/Qwen2.5-1.5B"
 teacher_path = "../models/unsloth/Qwen2.5-7B"
 save_path = "../models/results"
