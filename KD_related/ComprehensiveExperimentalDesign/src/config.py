@@ -11,3 +11,8 @@ topk = 150
 alpha = 0.5
 chunk_size = 4
 
+
+origin_student_path = "../models/unsloth/Qwen2.5-1.5B"
+teacher_path = "../models/unsloth/Qwen2.5-7B"
+save_path = "../models/results"
+resume_from_checkpoint = False

@@ -20,12 +20,18 @@ from trl import SFTTrainer, SFTConfig
 # 导入自定义的损失函数模块
 from OTloss import OT_loss
 
-# 配置模型路径
-# 请改为完整路径
-origin_student_path = "../models/unsloth/Qwen2.5-1.5B"
-teacher_path = "../models/unsloth/Qwen2.5-7B"
-save_path = "../models/results"
-resume_from_checkpoint = False
+# # 配置模型路径
+# # 请改为完整路径
+# origin_student_path = "../models/unsloth/Qwen2.5-1.5B"
+# teacher_path = "../models/unsloth/Qwen2.5-7B"
+# save_path = "../models/results"
+# resume_from_checkpoint = False
+from config import origin_student_path,teacher_path,save_path,resume_from_checkpoint
+origin_student_path = origin_student_path
+teacher_path = teacher_path
+save_path = save_path
+resume_from_checkpoint = resume_from_checkpoint
+
 
 # 配置参数
 # max_seq_length = 2048  # 最大序列长度，支持RoPE扩展

@@ -34,10 +34,17 @@ def find_checkpoint():
     return None  # 理论上不会执行到这里，因为保证有 checkpoint 文件夹
 
 
+# checkpoint_path = find_checkpoint()
+# origin_student_path = "../models/unsloth/Qwen2.5-1.5B"
+# distill_student_path = checkpoint_path
+# teacher_path = "../models/unsloth/Qwen2.5-7B"
+
+from config import origin_student_path,teacher_path
 checkpoint_path = find_checkpoint()
-origin_student_path = "../models/unsloth/Qwen2.5-1.5B"
+origin_student_path = origin_student_path
 distill_student_path = checkpoint_path
-teacher_path = "../models/unsloth/Qwen2.5-7B"
+teacher_path = teacher_path
+
 
 # 这次记录的名字
 run_name = "OT_KD"
