@@ -46,8 +46,11 @@ distill_student_path = checkpoint_path
 teacher_path = teacher_path
 
 
-# 这次记录的名字
-run_name = "OT_KD"
+# # 这次记录的名字
+# run_name = "OT_KD"
+from config import run_name
+run_name = run_name
+
 
 # 优化后的 compute_fkl，支持批量计算（同时支持 "none"、"sum"、"mean" 三种 reduction 模式）
 def compute_fkl(logits, teacher_logits, target, padding_id=-100, reduction="sum", temp=2.0):

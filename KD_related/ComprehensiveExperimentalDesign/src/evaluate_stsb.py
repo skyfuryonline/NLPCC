@@ -43,8 +43,10 @@ origin_student_path = origin_student_path
 distill_student_path = checkpoint_path
 teacher_path = teacher_path
 
-# 这次记录的名字
-run_name = "STS_B_Eval"
+# # 这次记录的名字
+# run_name = "STS_B_Eval"
+from config import run_name
+run_name = run_name
 
 # 加载模型（与原代码一致）
 teacher, tokenizer = FastLanguageModel.from_pretrained(

@@ -16,3 +16,7 @@ origin_student_path = "../models/unsloth/Qwen2.5-1.5B"
 teacher_path = "../models/unsloth/Qwen2.5-7B"
 save_path = "../models/results"
 resume_from_checkpoint = False
+
+
+# 用于evaluate中导出结果记录的名字
+run_name = "OT_KD_epoch=15_topk=200"
