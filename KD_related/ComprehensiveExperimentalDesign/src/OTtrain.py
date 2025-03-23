@@ -25,20 +25,26 @@ from OTloss import OT_loss
 origin_student_path = "../models/unsloth/Qwen2.5-1.5B"
 teacher_path = "../models/unsloth/Qwen2.5-7B"
 save_path = "../models/results"
-run_name = "OT_run"
+resume_from_checkpoint = False
 
 # 配置参数
-max_seq_length = 2048  # 最大序列长度，支持RoPE扩展
-dtype = None  # 自动检测数据类型（Tesla T4/V100用float16，Ampere用bfloat16）
-load_in_4bit = True  # 使用4bit量化减少内存占用
+# max_seq_length = 2048  # 最大序列长度，支持RoPE扩展
+# dtype = None  # 自动检测数据类型（Tesla T4/V100用float16，Ampere用bfloat16）
+# load_in_4bit = True  # 使用4bit量化减少内存占用
+from config import max_seq_length,dtype,load_in_4bit
+# 配置参数（保持不变）
+max_seq_length = max_seq_length
+dtype = dtype
+load_in_4bit = load_in_4bit
 
-epoch = 20
-lr = 0.0005
-temperature = 2.0
-reduction = "sum"
-topk = 150
-alpha = 0.5
-chunk_size = 4
+from config import epoch,lr,temperature,reduction,topk,alpha,chunk_size
+epoch = epoch
+lr = lr
+temperature = temperature
+reduction = reduction
+topk = topk
+alpha = alpha
+chunk_size = chunk_size
 
 # 自定义知识蒸馏训练器（继承自SFTTrainer）
 class KDTrainer(SFTTrainer):
@@ -158,7 +164,7 @@ train_dataset = train_dataset.map(formatting_prompts_func, batched=True, )
 # 配置训练参数
 args = TrainingArguments(
     output_dir=save_path,  # 输出目录
-    logging_dir=f"../results/logs/{run_name}",  # 日志目录
+    # logging_dir="../results/logs/",  # 日志目录
 
     num_train_epochs=epoch,  # 训练轮次
 
@@ -198,4 +204,4 @@ trainer = KDTrainer(
 
 # 如果是初次训练resume_from_checkpoint为false，接着checkpoint继续训练，为True
 # 需要当前的epoch比上次的大
-trainer.train(resume_from_checkpoint=False)
+trainer.train(resume_from_checkpoint=resume_from_checkpoint)

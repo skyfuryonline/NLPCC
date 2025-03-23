@@ -5,10 +5,16 @@ import numpy as np
 import os
 import re
 
-# 配置参数（保持与原代码一致）
-max_seq_length = 2048
-dtype = None
-load_in_4bit = True
+# # 配置参数（保持与原代码一致）
+# max_seq_length = 2048
+# dtype = None
+# load_in_4bit = True
+from config import max_seq_length,dtype,load_in_4bit
+# 配置参数（保持不变）
+max_seq_length = max_seq_length
+dtype = dtype
+load_in_4bit = load_in_4bit
+
 
 # # 蒸馏参数
 # temperature = 2.0

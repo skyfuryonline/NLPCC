@@ -35,8 +35,8 @@ Dataset({
 # 加载STS-B数据集
 train_stsb_dataset = load_dataset('glue', 'stsb',cache_dir="../data",split = "train[:2000]")
 val_stsb_dataset =load_dataset('glue', 'stsb',cache_dir="../data",split = "train[2000:2100]")
-print(train_stsb_dataset)
-print(val_stsb_dataset)
+# print(train_stsb_dataset)
+# print(val_stsb_dataset)
 '''
 Dataset({
     features: ['sentence1', 'sentence2', 'label', 'idx'],
