@@ -1,0 +1,5 @@
+如果需要在数据集上微调教师模型，则在fine_tuning_train中进行，修改里面src下的config文件
+
+微调后模型存储在fine_tuning_train中的save_model_chpt下
+
+在进行知识蒸馏的时候，在外面进行，在外面的src下的config中修改教师模型为对应内部FT后的chpt文件
