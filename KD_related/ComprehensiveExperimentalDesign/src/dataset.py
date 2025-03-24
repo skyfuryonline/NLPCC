@@ -16,8 +16,8 @@ os.environ['HF_ENDPOINT'] = "https://hf-mirror.com"
 
 # 加载并预处理Alpaca数据集
 from datasets import load_dataset
-train_dataset = load_dataset("yahma/alpaca-cleaned",cache_dir="../data", split = "train[:2000]")
-val_dataset = load_dataset("yahma/alpaca-cleaned",cache_dir="../data", split = "train[2000:2100]")
+train_alpaca_dataset = load_dataset("yahma/alpaca-cleaned",cache_dir="../data", split = "train[:2000]")
+val_alpaca_dataset = load_dataset("yahma/alpaca-cleaned",cache_dir="../data", split = "train[2000:2100]")
 
 # print(train_dataset)
 # print(val_dataset)
@@ -47,3 +47,7 @@ Dataset({
     num_rows: 100
 })
 '''
+
+
+train_wmt_dataset = load_dataset('wmt/wmt14','cs-en',cache_dir="../data",split = "train[:2000]")
+val_wmt_dataset = load_dataset('wmt/wmt14','cs-en',cache_dir="../data",split = "train[-200:]")
