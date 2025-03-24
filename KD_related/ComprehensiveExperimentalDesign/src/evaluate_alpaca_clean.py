@@ -145,8 +145,8 @@ def extract_response(text):
 
 
 # 加载验证集（保持不变）
-from dataset import val_dataset
-val_dataset = val_dataset.map(formatting_prompts_func, batched=True)
+from dataset import val_alpaca_dataset
+val_dataset = val_alpaca_dataset.map(formatting_prompts_func, batched=True)
 
 
 # 优化后的生成函数（返回 logits、response 和 input_ids）

@@ -1,3 +1,5 @@
 .idea/
 /toolfile.py
 
+/KD_related/ComprehensiveExperimentalDesign/data/
+/KD_related/ComprehensiveExperimentalDesign/fine_tuning_train/data/

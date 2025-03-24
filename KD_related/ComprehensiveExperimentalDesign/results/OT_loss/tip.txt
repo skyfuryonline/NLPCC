@@ -1,4 +1,0 @@
-topk=150的block-size是4，其余随着topk的增大变为2
-
-使用梯度累积，等价batch 为64 = 4x16
-
