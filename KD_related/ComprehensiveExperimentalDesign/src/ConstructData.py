@@ -1,7 +1,7 @@
 # 用于将数据集构造成instruction，input和output的形式
 
 # 构造wmt的翻译数据集，即fr-en的翻译对
-from dataset import train_wmt_dataset,val_wmt_dataset
+from dataset import train_opus_dataset,val_opus_dataset
 
 # l = train_wmt_dataset[0]['translation']['cs']
 # print(l)
@@ -9,25 +9,25 @@ from dataset import train_wmt_dataset,val_wmt_dataset
 
 # 处理整个train数据集
 alpaca_dataset = []
-for item in train_wmt_dataset:
+for item in train_opus_dataset:
     alpaca_format = {
         "instruction": "Translate the following text from English to French.",
         "input": item['translation']['fr'],
         "output": item['translation']['en']
     }
     alpaca_dataset.append(alpaca_format)
-train_wmt_dataset = alpaca_dataset
+train_opus_dataset = alpaca_dataset
 
 # 处理整个val数据集
 alpaca_dataset = []
-for item in val_wmt_dataset:
+for item in val_opus_dataset:
     alpaca_format = {
         "instruction": "Translate the following text from English to French.",
         "input": item['translation']['fr'],
         "output": item['translation']['en']
     }
     alpaca_dataset.append(alpaca_format)
-val_wmt_dataset = alpaca_dataset
+val_opus_dataset = alpaca_dataset
 
-print(train_wmt_dataset[0])
-print(val_wmt_dataset[0])
+print(train_opus_dataset[0])
+print(val_opus_dataset[0])

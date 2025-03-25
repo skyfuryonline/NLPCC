@@ -49,6 +49,6 @@ Dataset({
 })
 '''
 
-
-train_wmt_dataset = load_dataset('wmt/wmt14','fr-en',cache_dir="../data",split = "train[:2000]")
-val_wmt_dataset = load_dataset('wmt/wmt14','fr-en',cache_dir="../data",split = "train[-200:]")
+#加载opusbook
+train_opus_dataset = load_dataset("Helsinki-NLP/opus_books","en-fr",cache_dir="../data",split = "train[:2000]")
+val_opus_dataset = load_dataset("Helsinki-NLP/opus_books","en-fr",cache_dir="../data",split = "train[-200:]")
