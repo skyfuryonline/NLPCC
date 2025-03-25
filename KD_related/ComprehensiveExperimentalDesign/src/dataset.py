@@ -13,11 +13,12 @@
 
 import os
 os.environ['HF_ENDPOINT'] = "https://hf-mirror.com"
+from datasets import load_dataset
+
 
 # 加载并预处理Alpaca数据集
-from datasets import load_dataset
-train_alpaca_dataset = load_dataset("yahma/alpaca-cleaned",cache_dir="../data", split = "train[:2000]")
-val_alpaca_dataset = load_dataset("yahma/alpaca-cleaned",cache_dir="../data", split = "train[2000:2100]")
+# train_alpaca_dataset = load_dataset("yahma/alpaca-cleaned",cache_dir="../data", split = "train[:2000]")
+# val_alpaca_dataset = load_dataset("yahma/alpaca-cleaned",cache_dir="../data", split = "train[2000:2100]")
 
 # print(train_dataset)
 # print(val_dataset)
@@ -33,8 +34,8 @@ Dataset({
 '''
 
 # 加载STS-B数据集
-train_stsb_dataset = load_dataset('glue', 'stsb',cache_dir="../data",split = "train[:2000]")
-val_stsb_dataset =load_dataset('glue', 'stsb',cache_dir="../data",split = "train[2000:2100]")
+# train_stsb_dataset = load_dataset('glue', 'stsb',cache_dir="../data",split = "train[:2000]")
+# val_stsb_dataset =load_dataset('glue', 'stsb',cache_dir="../data",split = "train[2000:2100]")
 # print(train_stsb_dataset)
 # print(val_stsb_dataset)
 '''
@@ -49,5 +50,5 @@ Dataset({
 '''
 
 
-train_wmt_dataset = load_dataset('wmt/wmt14','cs-en',cache_dir="../data",split = "train[:2000]")
-val_wmt_dataset = load_dataset('wmt/wmt14','cs-en',cache_dir="../data",split = "train[-200:]")
+train_wmt_dataset = load_dataset('wmt/wmt14','fr-en',cache_dir="../data",split = "train[:2000]")
+val_wmt_dataset = load_dataset('wmt/wmt14','fr-en',cache_dir="../data",split = "train[-200:]")
