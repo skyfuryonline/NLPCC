@@ -91,9 +91,8 @@ from ConstructDataForOpus import val_opus_dataset
 val_dataset = val_opus_dataset.map(formatting_prompts_func, batched=True)
 
 # 生成函数（返回 response）
-def generate_response_batch(model, tokenizer, input_texts, max_new_tokens=512):
-    instrct = "Translate the following text from English to French."
-    prompts = [alpaca_prompt.format(instrct,inp, "") for inp in input_texts]
+def generate_response_batch(model, tokenizer,instrcts, input_texts, max_new_tokens=512):
+    prompts = [alpaca_prompt.format(instrct,inp, "") for inp,instrct in zip(input_texts,instrcts)]
     inputs = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True, max_length=max_seq_length).to(
         model.device)
 
@@ -124,12 +123,13 @@ def evaluate_opus_books(teacher, original_student, distilled_student, dataset, t
     for i in range(0, len(dataset), batch_size):
         batch = dataset[i:i + batch_size]
         inputs = batch["input"]
+        instruct = batch["instruction"]
         true_responses = [extract_response(text) for text in batch["text"]]
 
         # 批量生成响应
-        teacher_responses = generate_response_batch(teacher, tokenizer, inputs)
-        original_responses = generate_response_batch(original_student, tokenizer, inputs)
-        distilled_responses = generate_response_batch(distilled_student, tokenizer, inputs)
+        teacher_responses = generate_response_batch(teacher, tokenizer, instruct,inputs)
+        original_responses = generate_response_batch(original_student, tokenizer, instruct,inputs)
+        distilled_responses = generate_response_batch(distilled_student, tokenizer, instruct,inputs)
 
         # 计算 BLEU 和 Rouge-L
         for j in range(len(inputs)):
