@@ -92,7 +92,8 @@ val_dataset = val_opus_dataset.map(formatting_prompts_func, batched=True)
 
 # 生成函数（返回 response）
 def generate_response_batch(model, tokenizer, input_texts, max_new_tokens=512):
-    prompts = [alpaca_prompt.format(inp, "") for inp in input_texts]
+    instrct = "Translate the following text from English to French."
+    prompts = [alpaca_prompt.format(instrct,inp, "") for inp in input_texts]
     inputs = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True, max_length=max_seq_length).to(
         model.device)
 
