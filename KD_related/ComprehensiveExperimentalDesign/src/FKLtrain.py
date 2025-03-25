@@ -52,6 +52,11 @@ topk = topk
 alpha = alpha
 chunk_size = chunk_size
 
+
+# 加载并预处理Alpaca数据集
+from dataset import train_dataset
+train_dataset = train_dataset.map(formatting_prompts_func, batched=True, )
+
 class KDTrainer(SFTTrainer):
 
     def __init__(self, *args, teacher_model=None, if_use_entropy=None, **kwargs):
@@ -157,9 +162,7 @@ def formatting_prompts_func(examples):
         texts.append(text)
     return {"text": texts, }
 
-# 加载并预处理Alpaca数据集
-from dataset import train_dataset
-train_dataset = train_dataset.map(formatting_prompts_func, batched=True, )
+
 
 # 配置训练参数
 args = TrainingArguments(
