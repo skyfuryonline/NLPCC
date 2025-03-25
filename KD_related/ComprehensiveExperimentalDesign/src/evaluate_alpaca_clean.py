@@ -145,7 +145,7 @@ def extract_response(text):
 
 
 # 加载验证集（保持不变）
-from dataset import val_alpaca_dataset
+from ConstructDataForOpus import val_alpaca_dataset
 val_dataset = val_alpaca_dataset.map(formatting_prompts_func, batched=True)
 
 
@@ -255,7 +255,7 @@ print(f"蒸馏模型 Rouge-L 分数: {results['Distilled Rouge-L']:.4f}")
 
 
 # 同步到制定文件内
-log_dir = "../results"
+log_dir = "/home/lihao/lh/ComprehensiveExperimentalDesign/results"
 os.makedirs(log_dir, exist_ok=True)
 result_file = os.path.join(log_dir, f"{run_name}.txt")
 # 写入评估结果到文件

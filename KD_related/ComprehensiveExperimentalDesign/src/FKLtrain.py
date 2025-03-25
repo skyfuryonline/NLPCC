@@ -53,9 +53,12 @@ alpha = alpha
 chunk_size = chunk_size
 
 
-# 加载并预处理Alpaca数据集
-from dataset import train_dataset
-train_dataset = train_dataset.map(formatting_prompts_func, batched=True, )
+# # 加载并预处理Alpaca数据集
+# from dataset import train_dataset
+# train_dataset = train_dataset.map(formatting_prompts_func, batched=True, )
+
+# 加载OpusBooks数据集
+from ConstructDataForOpus import train_opus_dataset
 
 class KDTrainer(SFTTrainer):
 
@@ -162,6 +165,7 @@ def formatting_prompts_func(examples):
         texts.append(text)
     return {"text": texts, }
 
+train_opus_dataset = train_opus_dataset.map(formatting_prompts_func,batched=True,)
 
 
 # 配置训练参数

@@ -200,7 +200,7 @@ print(f"原始模型与教师模型 KL: {results['Original KL (wrt Teacher)']:.4
 print(f"蒸馏模型与教师模型 KL: {results['Distilled KL (wrt Teacher)']:.4f}")
 
 # 同步到文件
-log_dir = "../results"
+log_dir = "/home/lihao/lh/ComprehensiveExperimentalDesign/results"
 os.makedirs(log_dir, exist_ok=True)
 result_file = os.path.join(log_dir, f"{run_name}.txt")
 with open(result_file, "w", encoding="utf-8") as f:
