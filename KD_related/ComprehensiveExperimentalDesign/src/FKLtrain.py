@@ -165,7 +165,7 @@ def formatting_prompts_func(examples):
         texts.append(text)
     return {"text": texts, }
 
-train_opus_dataset = train_opus_dataset.map(formatting_prompts_func,batched=True,)
+train_dataset = train_opus_dataset.map(formatting_prompts_func,batched=True,)
 
 
 # 配置训练参数
