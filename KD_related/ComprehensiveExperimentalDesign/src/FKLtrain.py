@@ -57,8 +57,11 @@ chunk_size = chunk_size
 # from dataset import train_dataset
 # train_dataset = train_dataset.map(formatting_prompts_func, batched=True, )
 
-# 加载OpusBooks数据集
-from ConstructDataForOpus import train_opus_dataset
+# # 加载OpusBooks数据集
+# from ConstructDataForOpus import train_opus_dataset
+
+# 加载Summary数据集
+from ConstructDataForSummary import train_summary_dataset
 
 class KDTrainer(SFTTrainer):
 
@@ -165,8 +168,9 @@ def formatting_prompts_func(examples):
         texts.append(text)
     return {"text": texts, }
 
-train_dataset = train_opus_dataset.map(formatting_prompts_func,batched=True,)
+# train_dataset = train_opus_dataset.map(formatting_prompts_func,batched=True,)
 
+train_dataset = train_summary_dataset.map(formatting_prompts_func,batched=True,)
 
 # 配置训练参数
 args = TrainingArguments(
