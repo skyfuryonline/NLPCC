@@ -29,5 +29,3 @@ for item in val_summary_dataset:
 
 # 转换为 Dataset 类型
 val_summary_dataset = Dataset.from_list(alpaca_dataset)
-
-print(train_summary_dataset[0])
