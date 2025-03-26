@@ -50,5 +50,15 @@ Dataset({
 '''
 
 #加载opusbook
-train_opus_dataset = load_dataset("Helsinki-NLP/opus_books","en-fr",cache_dir="../data",split = "train[:2000]")
-val_opus_dataset = load_dataset("Helsinki-NLP/opus_books","en-fr",cache_dir="../data",split = "train[-200:]")
+# train_opus_dataset = load_dataset("Helsinki-NLP/opus_books","en-fr",cache_dir="../data",split = "train[:2000]")
+# val_opus_dataset = load_dataset("Helsinki-NLP/opus_books","en-fr",cache_dir="../data",split = "train[-200:]")
+
+
+# 加载总结的数据集
+train_summary_dataset = load_dataset("abisee/cnn_dailymail",'3.0.0',cache_dir="../data",split='train[:2000]')
+val_summary_dataset = load_dataset("abisee/cnn_dailymail",'3.0.0',cache_dir='../data',split='train[-200:]')
+
+print(train_summary_dataset[1])
+print(train_summary_dataset[1]['article'])
+print("--------------------------")
+print(train_summary_dataset[1]['highlights'])
