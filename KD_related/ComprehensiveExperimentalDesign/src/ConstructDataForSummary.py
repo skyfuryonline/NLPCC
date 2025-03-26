@@ -8,24 +8,26 @@ from datasets import Dataset
 alpaca_dataset = []
 for item in train_summary_dataset:
     alpaca_format = {
-        "instruction": "Translate the following text from English to French.",
-        "input": item['translation']['fr'],
-        "output": item['translation']['en']
+        "instruction": "Summarize the following news article into 2-3 concise sentences, ensuring to include key details",
+        "input": item['article'],
+        "output": item['highlights']
     }
     alpaca_dataset.append(alpaca_format)
 
 # 转换为 Dataset 类型
-train_opus_dataset = Dataset.from_list(alpaca_dataset)
+train_summary_dataset = Dataset.from_list(alpaca_dataset)
 
 # 处理整个 val 数据集
 alpaca_dataset = []
 for item in val_summary_dataset:
     alpaca_format = {
-        "instruction": "Translate the following text from English to French.",
-        "input": item['translation']['fr'],
-        "output": item['translation']['en']
+        "instruction": "Summarize the following news article into 2-3 concise sentences, ensuring to include key details",
+        "input": item['article'],
+        "output": item['highlights']
     }
     alpaca_dataset.append(alpaca_format)
 
 # 转换为 Dataset 类型
-val_opus_dataset = Dataset.from_list(alpaca_dataset)
+val_summary_dataset = Dataset.from_list(alpaca_dataset)
+
+print(train_summary_dataset[0])
