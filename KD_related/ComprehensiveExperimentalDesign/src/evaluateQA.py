@@ -120,7 +120,7 @@ def extract_response(text):
 
 # 加载 SQuAD 验证集
 from ConstructDataForQA import val_qa_dataset
-val_dataset = val_qa_dataset
+val_dataset = val_qa_dataset.map(formatting_prompts_func, batched=True)
 
 # 生成函数（返回 response）
 def generate_response_batch(model, tokenizer, instructions, inputs, max_new_tokens=512):
@@ -137,12 +137,21 @@ def generate_response_batch(model, tokenizer, instructions, inputs, max_new_toke
         generated_texts = [tokenizer.decode(ids, skip_special_tokens=True) for ids in generated_ids]
         responses = [extract_response(text) for text in generated_texts]
 
+    # # 保存模型的响应
+    # from config import response_save_path
+    # with open(response_save_path, "a", encoding="utf-8") as f:
+    #     for response in responses:
+    #         f.write(response + "\n")
+
     return responses
 
 # F1 分数计算函数（基于 SQuAD 方法）
 def f1_score(prediction, ground_truth):
     pred_tokens = normalize_answer(prediction).split()
     gt_tokens = normalize_answer(ground_truth).split()
+
+    # pred_tokens = prediction.split()
+    # gt_tokens = ground_truth.split()
 
     if not pred_tokens or not gt_tokens:  # 处理空输入
         return 0.0
@@ -169,7 +178,7 @@ def evaluateQA(teacher, original_student, distilled_student, dataset, tokenizer,
         batch = dataset[i:i + batch_size]
         instructions = batch["instruction"]
         inputs = batch["input"]
-        true_responses = [extract_response(text) for text in batch["output"]]
+        true_responses = [extract_response(text) for text in batch["text"]]
 
         # 批量生成响应
         teacher_responses = generate_response_batch(teacher, tokenizer, instructions, inputs)

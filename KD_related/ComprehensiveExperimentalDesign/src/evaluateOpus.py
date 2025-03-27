@@ -105,6 +105,12 @@ def generate_response_batch(model, tokenizer,instrcts, input_texts, max_new_toke
         generated_texts = [tokenizer.decode(ids, skip_special_tokens=True) for ids in generated_ids]
         responses = [extract_response(text) for text in generated_texts]
 
+    # # 保存模型的响应
+    # from config import response_save_path
+    # with open(response_save_path, "a", encoding="utf-8") as f:
+    #     for response in responses:
+    #         f.write(response + "\n")
+
     return responses
 
 # 评估函数（仅计算 BLEU 和 Rouge-L）

@@ -6,7 +6,7 @@ from datasets import Dataset
 alpaca_dataset = []
 for item in train_qa_dataset:
     alpaca_format = {
-        "instruction": "Please read the following article and answer the question based on its content.",
+        "instruction": "Please read the following article and answer the question based on its content. Provide a direct answer to the question.",
         "input": "Article: "+item['context']+"\n\nQuestion: "+item['question'],
         "output":item['answers']['text'][0]
     }
@@ -19,7 +19,7 @@ train_qa_dataset = Dataset.from_list(alpaca_dataset)
 alpaca_dataset = []
 for item in val_qa_dataset:
     alpaca_format = {
-        "instruction": "Please read the following article and answer the question based on its content.",
+        "instruction": "Please read the following article and answer the question based on its content. Provide a direct answer to the question.",
         "input":"Article: "+item['context']+"\n\nQuestion: "+item['question'] ,
         "output":item['answers']['text'][0]
     }

@@ -169,6 +169,12 @@ def generate_response_batch_with_logits(model, tokenizer, instructions, input_te
         generated_texts = [tokenizer.decode(ids, skip_special_tokens=True) for ids in generated_ids]
         responses = [extract_response(text) for text in generated_texts]
 
+    # # 保存模型的响应
+    # from config import response_save_path
+    # with open(response_save_path, "a", encoding="utf-8") as f:
+    #     for response in responses:
+    #         f.write(response + "\n")
+
     return logits, responses, inputs["input_ids"]  # 返回原始输入的 input_ids 作为 target
 
 
