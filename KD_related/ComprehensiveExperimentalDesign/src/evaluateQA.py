@@ -224,7 +224,7 @@ print(f"蒸馏模型 F1: {results['Distilled F1']:.4f}")
 # 同步到指定文件
 log_dir = "/home/lihao/lh/ComprehensiveExperimentalDesign/results"
 os.makedirs(log_dir, exist_ok=True)
-result_file = os.path.join(log_dir, f"{run_name}_squad.txt")
+result_file = os.path.join(log_dir, f"{run_name}.txt")
 with open(result_file, "w", encoding="utf-8") as f:
     f.write("评估结果（针对 SQuAD 数据集）：\n")
     f.write(f"教师模型 EM: {results['Teacher EM']:.4f}\n")
