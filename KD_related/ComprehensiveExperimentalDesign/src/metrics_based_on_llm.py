@@ -127,8 +127,17 @@ llm  = client
 def extract_score(eval_text):
     """
     从 LLM 返回的文本中提取评分，支持换行，并限制范围在 0-10 之间。
+    如果模型直接返回了 score，则直接提取。
     """
     try:
+        # 如果 eval_text 本身就是一个数字字符串，直接转换
+        if isinstance(eval_text, (int, float)):
+            return max(0, min(float(eval_text), 10))
+
+        eval_text = str(eval_text).strip()
+        if eval_text.replace('.', '', 1).isdigit():  # 处理字符串形式的纯数字
+            return max(0, min(float(eval_text), 10))
+
         # 允许 "Score:" 之后换行再写分数
         score_pattern = r"(?:###\s*Score:|Score:|Final Score:)\s*\n?(\d+\.?\d*)"
         match = re.search(score_pattern, eval_text, re.IGNORECASE)
