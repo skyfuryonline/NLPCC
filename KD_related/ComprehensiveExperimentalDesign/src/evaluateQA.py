@@ -144,7 +144,7 @@ def evaluateQA(teacher, original_student, distilled_student, dataset, tokenizer,
         batch = dataset[i:i + batch_size]
         instructions = batch["instruction"]
         inputs = batch["input"]
-        true_responses = [extract_response(text) for text in batch["text"]]
+        true_responses = [extract_response(text) for text in batch["output"]]
 
         # 批量生成响应
         teacher_responses = generate_response_batch(teacher, tokenizer, instructions, inputs)
