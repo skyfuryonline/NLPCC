@@ -4,6 +4,14 @@ EM 判断预测答案是否与参考答案完全一致。
 F1 基于词级别计算精确率和召回率，适用于短答案的评估。
 '''
 
+
+'''
+改进指标以适应下列情况：
+prediction:
+The Virgin Mary allegedly appeared to Saint Bernadette Soubirous in 1858 in Lourdes, France.
+GT：
+Saint Bernadette Soubirous
+'''
 import torch
 from unsloth import FastLanguageModel
 import numpy as np
@@ -131,7 +139,24 @@ def generate_response_batch(model, tokenizer, instructions, inputs, max_new_toke
 
     return responses
 
-# 评估函数（计算 EM 和 F1）
+# F1 分数计算函数（基于 SQuAD 方法）
+def f1_score(prediction, ground_truth):
+    pred_tokens = normalize_answer(prediction).split()
+    gt_tokens = normalize_answer(ground_truth).split()
+
+    if not pred_tokens or not gt_tokens:  # 处理空输入
+        return 0.0
+
+    common = set(pred_tokens) & set(gt_tokens)
+    if len(common) == 0:
+        return 0.0
+
+    precision = len(common) / len(pred_tokens)
+    recall = len(common) / len(gt_tokens)
+    f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
+    return f1
+
+# 评估函数（改进版）
 def evaluateQA(teacher, original_student, distilled_student, dataset, tokenizer, batch_size=4):
     em_teacher, em_original, em_distilled = [], [], []
     f1_teacher, f1_original, f1_distilled = [], [], []
@@ -158,41 +183,15 @@ def evaluateQA(teacher, original_student, distilled_student, dataset, tokenizer,
             orig_pred = original_responses[j]
             dist_pred = distilled_responses[j]
 
-            # EM 计算
+            # EM 计算（保持严格匹配）
             em_teacher.append(1 if ref == teacher_pred else 0)
             em_original.append(1 if ref == orig_pred else 0)
             em_distilled.append(1 if ref == dist_pred else 0)
 
-            # F1 计算
-            ref_tokens = set(ref.split())
-            teacher_pred_tokens = set(teacher_pred.split())
-            orig_pred_tokens = set(orig_pred.split())
-            dist_pred_tokens = set(dist_pred.split())
-
-            common_teacher = ref_tokens.intersection(teacher_pred_tokens)
-            common_orig = ref_tokens.intersection(orig_pred_tokens)
-            common_dist = ref_tokens.intersection(dist_pred_tokens)
-
-            if len(ref_tokens) == 0 or len(teacher_pred_tokens) == 0:
-                f1_teacher.append(0)
-            else:
-                precision = len(common_teacher) / len(teacher_pred_tokens)
-                recall = len(common_teacher) / len(ref_tokens)
-                f1_teacher.append(2 * (precision * recall) / (precision + recall) if precision + recall > 0 else 0)
-
-            if len(ref_tokens) == 0 or len(orig_pred_tokens) == 0:
-                f1_original.append(0)
-            else:
-                precision = len(common_orig) / len(orig_pred_tokens)
-                recall = len(common_orig) / len(ref_tokens)
-                f1_original.append(2 * (precision * recall) / (precision + recall) if precision + recall > 0 else 0)
-
-            if len(ref_tokens) == 0 or len(dist_pred_tokens) == 0:
-                f1_distilled.append(0)
-            else:
-                precision = len(common_dist) / len(dist_pred_tokens)
-                recall = len(common_dist) / len(ref_tokens)
-                f1_distilled.append(2 * (precision * recall) / (precision + recall) if precision + recall > 0 else 0)
+            # F1 计算（使用改进的 f1_score 函数）
+            f1_teacher.append(f1_score(teacher_pred, ref))
+            f1_original.append(f1_score(orig_pred, ref))
+            f1_distilled.append(f1_score(dist_pred, ref))
 
     # 计算各指标平均值
     avg_em_teacher = np.mean(em_teacher)
