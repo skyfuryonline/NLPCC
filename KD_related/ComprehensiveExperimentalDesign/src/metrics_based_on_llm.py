@@ -101,7 +101,6 @@ def extract_response(text):
 from ConstructDataForQA import val_qa_dataset
 val_dataset = val_qa_dataset.map(formatting_prompts_func, batched=True)
 
-
 # 生成函数（返回 response）
 def generate_response_batch(model, tokenizer, instructions, inputs, max_new_tokens=512):
     prompts = [alpaca_prompt.format(instruction, inp, "") for instruction, inp in zip(instructions, inputs)]
@@ -123,10 +122,11 @@ def generate_response_batch(model, tokenizer, instructions, inputs, max_new_toke
 from config import client,generate
 #通过config传入指定的llm
 llm  = client
-
 def extract_score(eval_text):
-    # print("待评价文本是：")
-    # print(eval_text)
+
+    print("待评价文本是：")
+    print(eval_text)
+
 
     """
     从 LLM 返回的文本中提取评分，支持换行，并限制范围在 0-10 之间。
@@ -159,7 +159,8 @@ def extract_score(eval_text):
 
 
 # Alpaca Prompt 模板（优化版，便于提取 Score）
-ALPACA_PROMPT = """\
+ALPACA_PROMPT = """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+
 ### Instruction:
 {instruction}
 
@@ -215,11 +216,14 @@ def evaluate_based_on_LLM(teacher, original_student, distilled_student, dataset,
             )
 
             # 调用外部 LLM 进行评分
-            teacher_eval = generate(llm,prompt=teacher_prompt, max_length=50)  # 缩短 max_length，因为只需要分数
-            original_eval =generate(llm,prompt=original_prompt, max_length=50)
-            distilled_eval = generate(llm,prompt=distilled_prompt, max_length=50)
+            teacher_eval = generate(llm,prompt=teacher_prompt, max_length=256)  # 缩短 max_length，因为只需要分数
+            original_eval =generate(llm,prompt=original_prompt, max_length=256)
+            distilled_eval = generate(llm,prompt=distilled_prompt, max_length=256)
 
             # 提取评分
+            # print(teacher_eval)
+            # input()
+
             teacher_score = extract_score(teacher_eval)
             original_score = extract_score(original_eval)
             distilled_score = extract_score(distilled_eval)

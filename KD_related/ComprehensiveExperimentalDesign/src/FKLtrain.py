@@ -18,7 +18,7 @@ from transformers import TrainingArguments
 from trl import SFTTrainer, SFTConfig
 
 # 导入自定义的损失函数模块
-from OTloss import OT_loss
+from FKLLoss import compute_fkl
 
 # # 配置模型路径
 # # 请改为完整路径
@@ -53,15 +53,14 @@ alpha = alpha
 chunk_size = chunk_size
 
 
-# # 加载并预处理Alpaca数据集
-# from dataset import train_dataset
-# train_dataset = train_dataset.map(formatting_prompts_func, batched=True, )
-
 # # 加载OpusBooks数据集
 # from ConstructDataForOpus import train_opus_dataset
 
-# 加载Summary数据集
-from ConstructDataForSummary import train_summary_dataset
+# # 加载Summary数据集
+# from ConstructDataForSummary import train_summary_dataset
+
+# 加载QA数据集
+# from ConstructDataForQA import train_qa_dataset
 
 class KDTrainer(SFTTrainer):
 
@@ -168,9 +167,10 @@ def formatting_prompts_func(examples):
         texts.append(text)
     return {"text": texts, }
 
-# train_dataset = train_opus_dataset.map(formatting_prompts_func,batched=True,)
+#加载Opus
+from ConstructDataForOpus import train_dataset
+train_dataset = train_dataset.map(formatting_prompts_func, batched=True, )
 
-train_dataset = train_summary_dataset.map(formatting_prompts_func,batched=True,)
 
 # 配置训练参数
 args = TrainingArguments(

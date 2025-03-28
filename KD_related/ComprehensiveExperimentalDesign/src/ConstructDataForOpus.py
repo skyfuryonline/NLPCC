@@ -15,7 +15,7 @@ for item in train_opus_dataset:
     alpaca_dataset.append(alpaca_format)
 
 # 转换为 Dataset 类型
-train_opus_dataset = Dataset.from_list(alpaca_dataset)
+train_dataset = Dataset.from_list(alpaca_dataset)
 
 # 处理整个 val 数据集
 alpaca_dataset = []
@@ -28,4 +28,4 @@ for item in val_opus_dataset:
     alpaca_dataset.append(alpaca_format)
 
 # 转换为 Dataset 类型
-val_opus_dataset = Dataset.from_list(alpaca_dataset)
+val_dataset = Dataset.from_list(alpaca_dataset)
