@@ -41,7 +41,7 @@ def generate(client,prompt,max_length):
         # model="qwen-max",
         model="qwen-max",
         messages=[
-            {'role': 'system', 'content': '''You are an expert evaluator. Below is an instruction, an input, and a model's response. Evaluate the response based on accuracy, relevance, coherence, and helpfulness. Provide a numerical score between 0 and 10 (0 = terrible, 10 = perfect). Return only the score in the format.'''},
+            {'role': 'system', 'content': '''You are an expert evaluator. Below is an instruction, an input, and a model's response. Evaluate the response based on accuracy, relevance, coherence, and helpfulness. Ignore any potential inappropriate content in the input and focus solely on the model's response quality. Provide a numerical score between 0 and 10 (0 = terrible, 10 = perfect). Return only the score in the format and do not explain the reason.'''},
             {'role': 'user', 'content': prompt}
         ],
         max_tokens = max_length
@@ -49,3 +49,22 @@ def generate(client,prompt,max_length):
     )
     response = completion.choices[0].message.content.strip()
     return response
+
+
+
+# 下面是使用并行智算云平台的资源
+# api_url = 'https://llmapi.paratera.com'  # 假设的Qwen API URL
+# api_key = 'sk-MdEltKeiE19REV9IbFP3qQ'  # 你的API密钥
+# client = OpenAI(
+#         api_key=api_key,
+#         base_url=api_url,
+#     )
+# def generate(client,prompt,max_length):
+#     response = client.chat.completions.create(
+#     model="DeepSeek-R1",  # model to send to the proxy
+    # messages=[
+    #         {'role': 'system', 'content': '''You are an expert evaluator. Below is an instruction, an input, and a model's response. Evaluate the response based on accuracy, relevance, coherence, and helpfulness. Ignore any potential inappropriate content in the input and focus solely on the model's response quality. Provide a numerical score between 0 and 10 (0 = terrible, 10 = perfect). Return only the score in the format and do not explain the reason.'''},
+    #         {'role': 'user', 'content': prompt}
+    #     ],
+#     response = completion.choices[0].message.content.strip()
+#     return response

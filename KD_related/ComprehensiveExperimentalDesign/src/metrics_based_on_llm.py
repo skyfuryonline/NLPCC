@@ -125,32 +125,37 @@ from config import client,generate
 llm  = client
 
 def extract_score(eval_text):
+    # print("待评价文本是：")
+    # print(eval_text)
+
     """
     从 LLM 返回的文本中提取评分，支持换行，并限制范围在 0-10 之间。
-    如果模型直接返回了 score，则直接提取。
+    - 取最后一个出现的 score（可能是小数）。
+    - 如果找不到 score，则抛出错误并终止运行。
     """
     try:
-        # 如果 eval_text 本身就是一个数字字符串，直接转换
+        # 如果 eval_text 本身就是一个数字，直接转换
         if isinstance(eval_text, (int, float)):
             return max(0, min(float(eval_text), 10))
 
         eval_text = str(eval_text).strip()
-        if eval_text.replace('.', '', 1).isdigit():  # 处理字符串形式的纯数字
+
+        # 处理字符串形式的纯数字
+        if eval_text.replace('.', '', 1).isdigit():
             return max(0, min(float(eval_text), 10))
 
-        # 允许 "Score:" 之后换行再写分数
+        # 允许 "Score:" 之后换行再写分数，匹配最后一个出现的分数
         score_pattern = r"(?:###\s*Score:|Score:|Final Score:)\s*\n?(\d+\.?\d*)"
-        match = re.search(score_pattern, eval_text, re.IGNORECASE)
-        if match:
-            score = float(match.group(1))
-            return max(0, min(score, 10))  # 限制评分在 0-10 之间
-        else:
-            print(f"Warning: No score found in: {eval_text}. Defaulting to 5.0")
-            return 5.0
-    except (ValueError, TypeError):
-        print(f"Warning: Invalid score format in: {eval_text}. Defaulting to 5.0")
-        return 5.0
+        matches = re.findall(score_pattern, eval_text, re.IGNORECASE)
 
+        if matches:
+            score = float(matches[-1])  # 取最后一个匹配的 score
+            return max(0, min(score, 10))  # 限制评分在 0-10 之间
+
+        raise ValueError(f"Error: No score found in text: {eval_text}")
+
+    except (ValueError, TypeError) as e:
+        raise ValueError(f"Error: Invalid score format in text: {eval_text}") from e
 
 
 # Alpaca Prompt 模板（优化版，便于提取 Score）
