@@ -13,8 +13,8 @@ data_path = "/home/lihao/lh/ComprehensiveExperimentalDesign/data"
 # val_stsb_dataset =load_dataset('glue', 'stsb',cache_dir=data_path,split = "train[2000:2100]")
 
 #加载opusbook
-train_opus_dataset = load_dataset("Helsinki-NLP/opus_books","en-fr",cache_dir=data_path,split = "train[:2000]")
-val_opus_dataset = load_dataset("Helsinki-NLP/opus_books","en-fr",cache_dir=data_path,split = "train[-200:]")
+# train_opus_dataset = load_dataset("Helsinki-NLP/opus_books","en-fr",cache_dir=data_path,split = "train[:2000]")
+# val_opus_dataset = load_dataset("Helsinki-NLP/opus_books","en-fr",cache_dir=data_path,split = "train[-200:]")
 
 # 加载总结的数据集
 # train_summary_dataset = load_dataset("abisee/cnn_dailymail",'3.0.0',cache_dir="../data",split='train[:2000]')
@@ -23,3 +23,8 @@ val_opus_dataset = load_dataset("Helsinki-NLP/opus_books","en-fr",cache_dir=data
 # 加载QA数据集
 # train_qa_dataset = load_dataset("rajpurkar/squad",cache_dir="../data",split='train[:2000]')
 # val_qa_dataset = load_dataset("rajpurkar/squad",cache_dir="../data",split='train[-200:]')
+
+
+# 加载IMDB数据集
+train_imdb_dataset = load_dataset("stanfordnlp/imdb",cache_dir="../data",split='train[:2000]')
+val_imdb_dataset = load_dataset("stanfordnlp/imdb",cache_dir="../data",split='train[-200:]')
